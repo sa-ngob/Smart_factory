@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>รายละเอียด BOM - Smart Factory</title>
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .page-body { padding-top: 0; }
+      .card { border: none !important; box-shadow: none !important; }
+      @page { size: A4; margin: 1.5cm; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Sidebar (โหลดอัตโนมัติแบบเดียวกับ boms.html) -->
+    <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+    <div class="page-wrapper">
+      <div class="page-header d-print-none no-print">
+        <div class="container-xl">
+          <div class="row g-2 align-items-center">
+            <div class="col">
+              <h2 class="page-title" id="bom-title">รายละเอียด BOM: กำลังโหลด...</h2>
+              <p class="mt-1">Logged in as: <strong id="display-username">Loading...</strong></p>
+            </div>
+            <div class="col-auto ms-auto">
+              <a href="/boms.html" class="btn">กลับไปที่รายการ</a>
+              <a href="#" id="edit-bom-btn" class="btn btn-primary">แก้ไข BOM</a>
+              <button type="button" class="btn btn-outline-primary" onclick="window.print();">พิมพ์</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-body">
+        <div class="container-xl">
+          <div class="card card-lg">
+            <div class="card-body">
+              <h1 class="text-center mb-4">Bill of Materials (BOM)</h1>
+
+              <div id="main-bom-details"></div>
+
+              <hr class="my-4">
+              <h2 class="mb-3">รายการวัตถุดิบ (Raw Materials)</h2>
+              <div class="table-responsive">
+                <table class="table table-bordered">
+                  <thead>
+                    <tr>
+                      <th>รหัสวัตถุดิบ</th>
+                      <th>ชื่อวัตถุดิบ</th>
+                      <th class="text-end">Mixing Ratio (%)</th>
+                      <th>หน่วย</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bom-items-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="bom-history-card" class="card mt-4 no-print" style="display: none;">
+            <div class="card-header">
+              <h3 class="card-title">ประวัติ Revision</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table card-table table-vcenter text-nowrap">
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                    <th>วันที่สร้าง</th>
+                    <th>สถานะ</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="bom-history-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabler -->
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+  <!-- ให้ทำงานแบบเดียวกับ boms.html -->
+  <script src="/js/auth-client.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      async function loadSidebar() {
+        try {
+          const res = await fetchWithAuth('/api/sidebar');
+          const html = await res.text();
+          document.getElementById('sidebar').innerHTML = html;
+
+          // ไฮไลต์เมนู "จัดการ BOM" (ลิงก์ /boms.html)
+          const active = document.querySelector('.navbar-vertical .nav-link[href="/boms.html"]');
+          if (active) active.classList.add('active');
+        } catch (e) {
+          console.error('Could not load sidebar:', e.message);
+        }
+      }
+
+      async function loadUserInfo() {
+        try {
+          const res = await fetchWithAuth('/api/user-info');
+          const data = await res.json();
+          if (data.success && data.displayName) {
+            document.getElementById('display-username').textContent = data.displayName;
+          }
+        } catch (e) {
+          console.error('Could not load user info:', e.message);
+        }
+      }
+
+      loadSidebar();
+      loadUserInfo();
+    });
+  </script>
+
+  <!-- สคริปต์ข้อมูลรายละเอียด -->
+  <script src="/bom-details.js" defer></script>
+</body>
+</html>

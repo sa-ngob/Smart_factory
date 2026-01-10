@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>แก้ไขใบสั่งขาย - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <style>
+        .item-row .btn-remove-row {
+            vertical-align: middle;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <!-- Sidebar -->
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+            <!-- Sidebar content will be loaded here -->
+        </aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">
+                                แก้ไขใบสั่งขาย (Edit Sales Order)
+                            </h2>
+                            <h3 class="text-muted" id="so-number-header"></h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div id="loading-indicator" class="text-center p-5">
+                        <div class="spinner-border" role="status"></div>
+                        <p class="mt-2">กำลังโหลดข้อมูล...</p>
+                    </div>
+                    <div class="card" id="form-card" style="display: none;">
+                        <div class="card-body">
+                            <form id="so-form">
+                                <div class="row">
+                                    <div class="col-md-6 col-lg-3 mb-3">
+                                        <label for="so_number" class="form-label">เลขที่ใบสั่งขาย</label>
+                                        <input type="text" class="form-control" id="so_number" readonly>
+                                    </div>
+                                    <div class="col-md-6 col-lg-3 mb-3">
+                                        <label for="customer_id" class="form-label required">ลูกค้า</label>
+                                        <select class="form-select" id="customer_id" required></select>
+                                    </div>
+                                    <div class="col-md-6 col-lg-3 mb-3">
+                                        <label for="customer_po_number" class="form-label">เลขที่ PO ของลูกค้า</label>
+                                        <input type="text" class="form-control" id="customer_po_number">
+                                    </div>
+                                    <div class="col-md-6 col-lg-3 mb-3">
+                                        <label for="status" class="form-label required">สถานะ</label>
+                                        <select class="form-select" id="status" required>
+                                            <option value="draft">Draft</option>
+                                            <option value="confirmed">Confirmed</option>
+                                            <option value="in_production">In Production</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <label for="order_date" class="form-label required">วันที่สั่งซื้อ</label>
+                                        <input type="text" class="form-control" id="order_date" required>
+                                    </div>
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <label for="due_date" class="form-label required">วันที่ต้องการสินค้า</label>
+                                        <input type="text" class="form-control" id="due_date" required>
+                                    </div>
+                                </div>
+
+                                <h3 class="card-title mt-4">รายการสินค้า</h3>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40%;">สินค้า</th>
+                                                <th style="width: 15%;">จำนวน</th>
+                                                <th style="width: 20%;">ราคาต่อหน่วย</th>
+                                                <th style="width: 20%;">ราคารวม</th>
+                                                <th style="width: 5%;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="items-table-body"></tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary mt-3"
+                                    id="add-item-btn">เพิ่มรายการ</button>
+
+                                <div class="row justify-content-end mt-4">
+                                    <div class="col-lg-4 col-md-6">
+                                        <label class="form-label">ยอดรวมสุทธิ</label>
+                                        <input type="text" class="form-control form-control-lg text-end"
+                                            id="grand-total" value="0.00" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end mt-4">
+                                    <a href="/sales-orders.html" class="btn btn-link">ยกเลิก</a>
+                                    <button type="submit" class="btn btn-primary ms-2">บันทึกการเปลี่ยนแปลง</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const soId = urlParams.get('id');
+            if (!soId) {
+                document.body.innerHTML = '<div class="container text-center mt-5"><h1>ไม่พบ ID ของใบสั่งขาย</h1></div>';
+                return;
+            }
+
+            // --- Load Sidebar ---
+            // Assuming sidebar loading is handled by auth-client or common sidebar script which is not shown but the previous script block does it.
+            // We'll keep the logic but use fetchWithAuth if needed or just keep standard fetch if sidebar is public/session based.
+            // Looking at previous block, loadSidebar() uses fetchWithAuth. We don't need to repeat sidebar loading if it's already there?
+            // Ah, the previous block loads sidebar into #sidebar. This block duplicates it logic?
+            // The previous block (lines 120-151) calls `loadSidebar` and `loadUserInfo`. 
+            // This block (line 154+) also tries to fetch sidebar at lines 163-167. 
+            // I should remove the redundant sidebar fetch here and rely on the first block.
+
+            // We just need to handle the active link highlighting
+            const link = document.querySelector('a.nav-link[href="/sales-orders.html"]');
+            if (link) link.parentElement.classList.add('active');
+
+            const itemsTbody = document.getElementById('items-table-body');
+            const form = document.getElementById('so-form');
+            const customerSelect = document.getElementById('customer_id');
+            let availableItems = [];
+
+            // --- Main Function to Load and Populate Data ---
+            async function loadAndPopulateForm() {
+                try {
+                    const [soResponse, customersResponse] = await Promise.all([
+                        fetchWithAuth(`/api/sales-orders/${soId}`),
+                        fetchWithAuth('/api/entities?list_for=customer')
+                    ]);
+
+                    if (!soResponse.ok) throw new Error('SO not found');
+
+                    const soData = await soResponse.json();
+                    const customersData = customersResponse.ok ? await customersResponse.json() : { data: [] };
+
+                    const { details, items } = soData.data;
+
+                    // Populate customers dropdown
+                    populateCustomers(customersData.data, details.customer_id);
+
+                    // Fetch available items for the selected customer
+                    await fetchAvailableItems(details.customer_id);
+
+                    // Populate the form fields
+                    populateForm(details, items);
+
+                    // Show form and hide loader
+                    document.getElementById('form-card').style.display = 'block';
+                    document.getElementById('loading-indicator').style.display = 'none';
+
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    document.getElementById('loading-indicator').innerHTML = '<p class="text-danger">เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message + '</p>';
+                }
+            }
+
+            await loadAndPopulateForm();
+
+            // --- Event Listeners ---
+            document.getElementById('add-item-btn').addEventListener('click', () => addNewItemRow());
+            customerSelect.addEventListener('change', handleCustomerChange);
+            itemsTbody.addEventListener('click', (e) => {
+                if (e.target.classList.contains('btn-remove-row')) e.target.closest('tr').remove();
+                updateGrandTotal();
+            });
+            itemsTbody.addEventListener('input', (e) => {
+                if (e.target.classList.contains('item-quantity') || e.target.classList.contains('item-price')) updateRowTotal(e.target.closest('tr'));
+            });
+            form.addEventListener('submit', handleFormSubmit);
+
+            // --- Helper Functions ---
+            function populateCustomers(customers, selectedId) {
+                customerSelect.innerHTML = '';
+                if (customers) {
+                    customers.forEach(c => {
+                        const option = new Option(c.name, c.id);
+                        option.selected = (c.id === selectedId);
+                        customerSelect.add(option);
+                    });
+                }
+            }
+
+            async function fetchAvailableItems(customerId) {
+                const url = `/api/items?item_type=finished_good&customer_id=${customerId}`;
+                try {
+                    const response = await fetchWithAuth(url);
+                    const data = await response.json();
+                    availableItems = data.data || [];
+                } catch (error) {
+                    console.error('Error fetching items:', error);
+                    availableItems = [];
+                }
+            }
+
+            function populateForm(details, items) {
+                document.getElementById('so-number-header').textContent = details.so_number;
+                document.getElementById('so_number').value = details.so_number;
+                document.getElementById('customer_po_number').value = details.customer_po_number || '';
+                document.getElementById('status').value = details.status;
+
+                // Check if flatpickr is loaded
+                if (window.flatpickr) {
+                    flatpickr("#order_date", { defaultDate: details.order_date });
+                    flatpickr("#due_date", { defaultDate: details.due_date });
+                } else {
+                    document.getElementById('order_date').value = details.order_date ? details.order_date.split('T')[0] : '';
+                    document.getElementById('due_date').value = details.due_date ? details.due_date.split('T')[0] : '';
+                }
+
+                itemsTbody.innerHTML = '';
+                if (items) {
+                    items.forEach(item => addNewItemRow(item));
+                }
+                updateGrandTotal();
+            }
+
+            function addNewItemRow(item = null) {
+                const newRow = document.createElement('tr');
+                newRow.classList.add('item-row');
+                let itemOptions = '<option value="">-- เลือกสินค้า --</option>';
+                availableItems.forEach(i => {
+                    const selected = item && i.item_code === item.item_code ? 'selected' : '';
+                    itemOptions += `<option value="${i.item_code}" ${selected}>${i.item_code} - ${i.item_name}</option>`;
+                });
+                newRow.innerHTML = `
+                    <td><select class="form-select item-select" required>${itemOptions}</select></td>
+                    <td><input type="number" class="form-control item-quantity" value="${item ? item.quantity : 1}" min="1" required></td>
+                    <td><input type="number" class="form-control text-end item-price" value="${item ? (Number(item.unit_price) || 0).toFixed(2) : '0.00'}" step="0.01" min="0" required></td>
+                    <td><input type="text" class="form-control text-end item-total" value="${item ? (Number(item.total_price) || 0).toFixed(2) : '0.00'}" readonly></td>
+                    <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove-row">ลบ</button></td>
+                `;
+                itemsTbody.appendChild(newRow);
+            }
+
+            async function handleCustomerChange() {
+                itemsTbody.innerHTML = '';
+                await fetchAvailableItems(this.value);
+                addNewItemRow();
+            }
+
+            function updateRowTotal(row) {
+                const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
+                const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                row.querySelector('.item-total').value = (quantity * price).toFixed(2);
+                updateGrandTotal();
+            }
+
+            function updateGrandTotal() {
+                let grandTotal = 0;
+                itemsTbody.querySelectorAll('.item-total').forEach(input => grandTotal += parseFloat(input.value) || 0);
+                document.getElementById('grand-total').value = grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            async function handleFormSubmit(e) {
+                e.preventDefault();
+                const items = [];
+                let hasInvalidItem = false;
+                itemsTbody.querySelectorAll('.item-row').forEach(row => {
+                    const itemCode = row.querySelector('.item-select').value;
+                    if (!itemCode) hasInvalidItem = true;
+                    items.push({
+                        item_code: itemCode,
+                        quantity: parseInt(row.querySelector('.item-quantity').value, 10),
+                        unit_price: parseFloat(row.querySelector('.item-price').value),
+                        total_price: parseFloat(row.querySelector('.item-total').value)
+                    });
+                });
+                if (hasInvalidItem || items.length === 0) {
+                    alert('ข้อมูลรายการสินค้าไม่ถูกต้องหรือไม่มีรายการสินค้า');
+                    return;
+                }
+
+                const soData = {
+                    customer_po_number: document.getElementById('customer_po_number').value,
+                    customer_id: customerSelect.value,
+                    order_date: document.getElementById('order_date').value,
+                    due_date: document.getElementById('due_date').value,
+                    status: document.getElementById('status').value,
+                    total_amount: parseFloat(document.getElementById('grand-total').value.replace(/,/g, '')),
+                    items: items
+                };
+
+                try {
+                    const response = await fetchWithAuth(`/api/sales-orders/${soId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(soData)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.so_id) {
+                        alert('อัปเดตใบสั่งขายสำเร็จ!');
+                        window.location.href = `/sales-orders.html`;
+                    } else {
+                        alert('เกิดข้อผิดพลาด: ' + (data.error || 'ไม่สามารถอัปเดตได้'));
+                    }
+                } catch (error) {
+                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

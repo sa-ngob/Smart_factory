@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>รายการใบสั่งซื้อ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">รายการใบสั่งซื้อ (Purchase Orders)</h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <a href="/create-po.html" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                    viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <path d="M12 5l0 14"></path>
+                                    <path d="M5 12l14 0"></path>
+                                </svg>
+                                สร้างใบสั่งซื้อใหม่
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table card-table table-vcenter text-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ PO</th>
+                                        <th>ผู้ขาย</th>
+                                        <th>วันที่สั่งซื้อ</th>
+                                        <th class="text-end">ยอดรวม</th>
+                                        <th class="text-center">สถานะ</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="po-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // Highlight the active menu item
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/purchase-orders.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            async function initializePurchaseOrdersPage() {
+                const formatDate = (dateString) => new Date(dateString).toLocaleDateString('th-TH');
+                const formatCurrency = (num) => (num || 0).toLocaleString('th-TH', { style: 'currency', currency: 'THB' });
+                const formatStatus = (status) => `<span class="badge bg-secondary-lt">${status || 'N/A'}</span>`;
+
+                const tableBody = document.getElementById('po-table-body');
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center">Loading...</td></tr>`;
+                try {
+                    // [แก้ไข] ใช้ fetchWithAuth
+                    const response = await fetchWithAuth('/api/purchase-orders');
+                    const result = await response.json();
+
+                    if (!response.ok) throw new Error(result.error || 'Network response was not ok');
+
+                    if (result.success && result.data.length > 0) {
+                        tableBody.innerHTML = result.data.map(po => `
+                            <tr>
+                                <td><a href="#">${po.po_number}</a></td>
+                                <td>${po.vendor_name}</td>
+                                <td>${formatDate(po.order_date)}</td>
+                                <td class="text-end">${formatCurrency(po.total_amount)}</td>
+                                <td class="text-center">${formatStatus(po.status)}</td>
+                                <td class="text-end"><a href="/po-details.html?id=${po.id}" class="btn btn-sm btn-outline-primary">Details</a></td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tableBody.innerHTML = `<tr><td colspan="6" class="text-center">No purchase orders found.</td></tr>`;
+                    }
+                } catch (error) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error: ${error.message}</td></tr>`;
+                }
+            }
+
+            loadSidebar();
+            loadUserInfo();
+            initializePurchaseOrdersPage();
+        });
+    </script>
+</body>
+
+</html>

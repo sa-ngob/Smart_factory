@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>สร้าง BOM ใหม่ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <style>
+        /* Include admin-only style just in case it is needed later */
+        .admin-only {
+            display: none !important;
+        }
+
+        body.role-admin .admin-only {
+            display: inline-flex !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <h2 class="page-title">สร้าง Bill of Materials (BOM) ใหม่</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <form id="bom-form" class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label required">สินค้าสำเร็จรูป (Finished Good)</label>
+                                    <select id="product-select" name="product_part_number" class="form-select" required>
+                                        <option value="">-- กรุณาเลือกสินค้า --</option>
+                                    </select>
+                                    <input type="hidden" id="product_name" name="product_name">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label required">แม่พิมพ์ที่ใช้ (Mold)</label>
+                                    <select id="mold-select" name="mold_id" class="form-select" required>
+                                        <option value="">-- กรุณาเลือกแม่พิมพ์ --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mb-3">
+                                    <label class="form-label">เวอร์ชัน</label>
+                                    <input type="number" name="version" class="form-control" value="1" min="1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-body border-top">
+                            <div class="d-flex align-items-center mb-3">
+                                <h3 class="card-title">รายการวัตถุดิบ</h3>
+                                <div class="ms-auto lh-1">
+                                    <div class="text-muted">Total Ratio: <strong id="total-ratio">0 %</strong></div>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>รหัสวัตถุดิบ</th>
+                                            <th>ชื่อวัตถุดิบ</th>
+                                            <th style="width: 150px;">Mixing Ratio (%)</th>
+                                            <th style="width: 120px;">หน่วย</th>
+                                            <th style="width: 50px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bom-items-body">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" id="add-item-btn"
+                                class="btn btn-outline-primary mt-3">เพิ่มวัตถุดิบ</button>
+                        </div>
+
+                        <div class="card-footer text-end">
+                            <a href="/boms.html" class="btn">ยกเลิก</a>
+                            <button type="submit" class="btn btn-primary">บันทึก BOM</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            // 1. Sidebar & User Info
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                    const currentLink = document.querySelector('a.nav-link[href="/boms.html"]');
+                    if (currentLink) currentLink.parentElement.classList.add('active');
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        // Assuming somewhere in layout (maybe added by sidebar or header)
+                        // document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            await loadSidebar();
+            await loadUserInfo();
+        });
+    </script>
+    <script src="/js/create-bom.js" defer></script>
+</body>
+
+</html>

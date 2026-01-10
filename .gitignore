@@ -1,0 +1,14 @@
+node_modules/
+venv/
+venv_old/
+__pycache__/
+*.pyc
+.env
+pgdata/
+data/
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
+.vscode/
+*.log

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>รายการใบเสร็จรับเงิน - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+            <div class="container-fluid" id="sidebar-container">
+                 <div class="text-center p-4 text-white">กำลังโหลดเมนู...</div>
+            </div>
+        </aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">
+                                รายการใบเสร็จรับเงิน (Receipts)
+                            </h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <div class="btn-list">
+                                <a href="/create-receipt.html" class="btn btn-primary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 5l0 14"></path><path d="M5 12l14 0"></path></svg>
+                                    สร้างใบเสร็จใหม่
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table card-table table-vcenter text-nowrap datatable">
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ใบเสร็จ</th>
+                                        <th>ลูกค้า</th>
+                                        <th>วันที่ชำระ</th>
+                                        <th class="text-end">ยอดเงิน</th>
+                                        <th class="text-center">สถานะ</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="receipts-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // โหลด Sidebar
+            fetch('/api/sidebar').then(res => res.text()).then(data => { document.getElementById('sidebar-container').innerHTML = data; });
+
+            // Helper Functions
+            const formatDate = (dateString) => {
+                if (!dateString) return '-';
+                return new Date(dateString).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            };
+            
+            const formatCurrency = (num) => {
+                if (num === null || num === undefined) return '0.00';
+                return num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            };
+
+            const formatStatus = (status) => {
+                const statuses = {
+                    'pending_confirmation': { class: 'warning', text: 'รอตรวจสอบ' },
+                    'confirmed': { class: 'success', text: 'สำเร็จ' },
+                    'cancelled': { class: 'secondary', text: 'ยกเลิก' }
+                };
+                const s = statuses[status] || { class: 'secondary', text: status };
+                return `<span class="badge bg-${s.class}-lt">${s.text}</span>`;
+            };
+            
+            // Main Fetch Function
+            async function fetchReceipts() {
+                const tableBody = document.getElementById('receipts-table-body');
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">กำลังโหลดข้อมูล...</td></tr>';
+                try {
+                    const response = await fetch('/api/receipts'); 
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error);
+
+                    const receipts = result.data;
+                    if (!receipts || receipts.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่พบข้อมูลใบเสร็จ</td></tr>';
+                        return;
+                    }
+
+                    // ✨ FIX 2: แก้ไขการอ้างอิงชื่อ Field ให้ถูกต้องทั้งหมด
+                    tableBody.innerHTML = receipts.map(receipt => `
+                        <tr>
+                            <td><a href="/receipt-detail.html?id=${receipt.id}" class="text-reset">${receipt.receipt_number}</a></td>
+                            <td>${receipt.customer_name}</td>
+                            <td>${formatDate(receipt.payment_date)}</td>
+                            <td class="text-end">${formatCurrency(receipt.total_amount_paid)}</td>
+                            <td class="text-center">${formatStatus(receipt.status)}</td>
+                            <td class="text-end">
+                                <a href="/receipt-detail.html?id=${receipt.id}" class="btn btn-sm">ดูรายละเอียด</a>
+                            </td>
+                        </tr>
+                    `).join('');
+                } catch (error) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">${error.message}</td></tr>`;
+                }
+            }
+            
+            fetchReceipts();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="th" data-bs-theme="light">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>MO Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">วิเคราะห์ใบสั่งผลิต (Manufacturing Order Analysis)</h2>
+                        </div>
+                        <div class="col-md-4 col-sm-12 ms-auto">
+                            <select class="form-select" id="mo-select">
+                                <option value="">กำลังโหลดใบสั่งผลิต...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div id="dashboard-content" class="d-none">
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-3"><div class="card card-body"><div class="subheader">Item Code</div><div class="h3" id="summary-item-code">-</div></div></div>
+                            <div class="col-md-5"><div class="card card-body"><div class="subheader">Item Name</div><div class="h3" id="summary-item-name">-</div></div></div>
+                            <div class="col-md-2"><div class="card card-body"><div class="subheader">Machine</div><div class="h3" id="summary-machine">-</div></div></div>
+                            <div class="col-md-2"><div class="card card-body"><div class="subheader">Status</div><div class="h3" id="summary-status">-</div></div></div>
+                        </div>
+                        <div class="card mb-4"><div class="card-header"><h3 class="card-title">กราฟข้อมูลระหว่างการผลิต</h3></div><div class="card-body"><div id="realtime-chart" style="min-height: 300px;"></div></div></div>
+                        <div class="card"><div class="card-header"><h3 class="card-title">บันทึกการผลิต</h3></div><div class="table-responsive"><table class="table card-table table-vcenter"><thead><tr><th>วันที่</th><th>กะ</th><th>ผู้บันทึก</th><th>จำนวนดี</th><th>จำนวนเสีย</th></tr></thead><tbody id="production-records-table"></tbody></table></div></div>
+                    </div>
+                    <div id="placeholder-text" class="text-center text-muted py-5">
+                        <h3>กรุณาเลือกใบสั่งผลิตเพื่อดูข้อมูล</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+    document.addEventListener("DOMContentLoaded", async function () {
+        const moSelect = document.getElementById('mo-select');
+        const dashboardContent = document.getElementById('dashboard-content');
+        const placeholderText = document.getElementById('placeholder-text');
+        let realtimeChart;
+
+        // Load Sidebar and apply theme
+        fetch('api/sidebar').then(r => r.text()).then(d => {
+             const sidebarPlaceholder = document.getElementById('sidebar');
+             if(sidebarPlaceholder) {
+                sidebarPlaceholder.outerHTML = d;
+                
+                // ✨ FIX: Added a check to ensure sidebarEl exists before getting attribute
+                const sidebarEl = document.getElementById('sidebar');
+                if (sidebarEl) {
+                    const theme = sidebarEl.getAttribute('data-bs-theme');
+                    document.documentElement.setAttribute('data-bs-theme', theme || 'light');
+                }
+             }
+        });
+
+        // Load MO list into dropdown
+        try {
+            const response = await fetch('/api/dashboard/manufacturing-orders');
+            const result = await response.json();
+            if (result.success) {
+                moSelect.innerHTML = '<option value="">-- เลือกใบสั่งผลิต --</option>';
+                result.data.forEach(mo => {
+                    const option = new Option(`${mo.mo_number} (${mo.item_code}) - ${mo.status}`, mo.mo_number);
+                    moSelect.appendChild(option);
+                });
+            } else {
+                moSelect.innerHTML = '<option value="">โหลดข้อมูลล้มเหลว</option>';
+            }
+        } catch (e) { console.error(e); }
+
+        const loadMoDetails = async (moNumber) => {
+            if (!moNumber) {
+                dashboardContent.classList.add('d-none');
+                placeholderText.classList.remove('d-none');
+                return;
+            }
+            dashboardContent.classList.remove('d-none');
+            placeholderText.classList.add('d-none');
+            
+            try {
+                const response = await fetch(`/api/dashboard/mo-details/${moNumber}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error);
+
+                const { summary, time_series, production_records } = result.data;
+
+                // Render Summary & Chart
+                document.getElementById('summary-item-code').textContent = summary.item_code;
+                document.getElementById('summary-item-name').textContent = summary.item_name || '-';
+                document.getElementById('summary-machine').textContent = summary.machine_code || '-';
+                document.getElementById('summary-status').textContent = summary.status;
+                
+                const chartTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+
+                const chartOptions = {
+                    series: [
+                        { name: 'Core Temp', data: time_series.map(d => [new Date(d.timestamp).getTime(), d.mold_temp_core]) },
+                        { name: 'Cavity Temp', data: time_series.map(d => [new Date(d.timestamp).getTime(), d.mold_temp_cavity]) }
+                    ],
+                    chart: { type: 'line', height: 300, animations: { enabled: false }, toolbar: { show: true } },
+                    xaxis: { type: 'datetime', labels: { style: { colors: chartTheme === 'dark' ? '#adb5bd' : '#6c757d' } } },
+                    yaxis: { title: { text: 'Temperature (°C)' }, labels: { style: { colors: chartTheme === 'dark' ? '#adb5bd' : '#6c757d' } } },
+                    stroke: { width: 2, curve: 'smooth' },
+                    theme: { mode: chartTheme },
+                    tooltip: { theme: chartTheme }
+                };
+                if (realtimeChart) {
+                    realtimeChart.updateOptions(chartOptions);
+                } else {
+                    realtimeChart = new ApexCharts(document.querySelector("#realtime-chart"), chartOptions);
+                    realtimeChart.render();
+                }
+
+                // Render Production Records Table
+                const tableBody = document.getElementById('production-records-table');
+                tableBody.innerHTML = production_records.length > 0
+                    ? production_records.map(r => `<tr><td>${new Date(r.record_date).toLocaleDateString('th-TH')}</td><td>${r.shift}</td><td>${r.operator_name}</td><td>${r.good_quantity}</td><td>${r.total_scrap_quantity}</td></tr>`).join('')
+                    : '<tr><td colspan="5" class="text-center">ยังไม่มีบันทึกการผลิตสำหรับ MO นี้</td></tr>';
+
+            } catch(e) { console.error(e); }
+        };
+
+        moSelect.addEventListener('change', () => {
+            loadMoDetails(moSelect.value);
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>จัดการประวัติแม่พิมพ์ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">รายการแม่พิมพ์ทั้งหมด</h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <a href="/create-mold.html" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 5l0 14"></path><path d="M5 12l14 0"></path></svg>
+                                เพิ่มแม่พิมพ์ใหม่
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>รหัสแม่พิมพ์</th>
+                                        <th>ชื่อแม่พิมพ์</th>
+                                        <th>ลูกค้า</th>
+                                        <th>ตำแหน่ง</th>
+                                        <th>สถานะ</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="molds-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar'); // ✅ เปลี่ยนจาก /sidebar.html
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                    
+                    // Highlight the active menu item
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/molds.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // --- เรียกใช้งานฟังก์ชันทั้งหมด ---
+            loadSidebar();
+            loadUserInfo();
+        });
+    </script>
+    <script src="/js/molds.js" defer></script>
+</body>
+</html>

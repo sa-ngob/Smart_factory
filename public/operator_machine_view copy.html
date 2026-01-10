@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Operator View</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+        body { font-size: 1.1rem; }
+        .display-1 { font-size: 4rem; font-weight: 600; }
+        .display-4 { font-size: 2rem; font-weight: 500; }
+        .table-lg tbody tr { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-fluid">
+                    <div class="row align-items-center">
+                        <div class="col"><h1 class="page-title display-4" id="machine-name-title">Loading...</h1></div>
+                        <div class="col-auto">
+                            <a href="./operator.html" class="btn btn-outline-secondary ms-2">กลับไปหน้าเลือกเครื่องจักร</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-fluid">
+                    <div class="row row-cards">
+                        <div class="col-lg-12">
+                            <div class="card" id="in-progress-card">
+                                <div class="card-header"><h3 class="card-title">IN PROGRESS JOB</h3></div>
+                                
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <h3 class="text-azure" id="in-progress-mo">NO JOB RUNNING</h3>
+                                            <div class="display-1" id="in-progress-item"></div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="text-center">
+                                                <div class="text-muted">Target</div>
+                                                <div class="display-4" id="in-progress-target">0</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="text-center">
+                                                <div class="text-muted">Good</div>
+                                                <div class="display-4 text-success" id="in-progress-good">0</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="text-center">
+                                                <div class="text-muted">Scrap</div>
+                                                <div class="display-4 text-danger" id="in-progress-scrap">0</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mt-3">
+                                        <div class="col text-end">
+                                            <button class="btn btn-lg btn-warning" id="btn-force-stop">หยุดชั่วคราว (Pause)</button>
+                                            <button class="btn btn-lg btn-success ms-2" id="btn-force-start">เริ่มผลิตต่อ (Resume)</button>
+                                            <button class="btn btn-lg btn-primary ms-2" id="btn-record-production">บันทึกผลผลิต</button>
+                                            <button class="btn btn-lg btn-danger ms-2" id="btn-stop-job">จบงาน (End Job)</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                </div>
+                        </div>
+                        <div class="col-lg-7">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">PENDING JOBS</h3></div>
+                                <div class="card-body border-bottom py-3">
+                                    <button class="btn btn-info" id="btn-send-queue">Send Pending Queue to PLC</button>
+                                </div>
+                                <div class="table-responsive" style="max-height: 40vh; overflow-y: auto;">
+                                    <table class="table card-table table-vcenter table-lg">
+                                        <thead>
+                                            <tr>
+                                                <th>MO Number</th>
+                                                <th>Item Name</th>
+                                                <th class="text-end">Target Qty</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pending-jobs-table">
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">PRODUCTION RECORDS (Recent)</h3></div>
+                                <div class="table-responsive">
+                                    <table class="table card-table table-vcenter">
+                                        <thead>
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Operator</th>
+                                                <th class="text-end">Good</th>
+                                                <th class="text-end">Scrap</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="production-records-table">
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/auth-client.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // (JavaScript ทั้งหมดเหมือนเดิม ไม่มีการเปลี่ยนแปลง)
+        let machineInfo = null;
+        let currentJobInfo = null;
+        const machineCode = new URLSearchParams(window.location.search).get('machine');
+
+        const formatTime = (isoString) => isoString ? new Date(isoString).toLocaleTimeString('th-TH') : '-';
+
+        const forceMachineStatus = async (status) => {
+            if (!machineCode) {
+                alert("Machine code not found!");
+                return;
+            }
+            try {
+                const response = await fetchWithAuth('/api/dashboard/force-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        machine_code: machineCode,
+                        status: status
+                    })
+                });
+                const result = await response.json();
+                if (result.status === 'success' || result.success === true) {
+                    alert(`ส่งคำสั่งสำเร็จ: ตั้งค่าสถานะเป็น ${status} (ค่าจะอัปเดตใน 5 วินาที)`);
+                } else {
+                    throw new Error(result.error || result.message);
+                }
+            } catch (err) {
+                console.error("Failed to force status:", err);
+                alert(`Error: ${err.message}`);
+            }
+        };
+
+        const renderInProgress = (job) => {
+            const card = document.getElementById('in-progress-card');
+            if (job) {
+                card.style.display = 'block';
+                document.getElementById('in-progress-mo').textContent = job.mo_number;
+                document.getElementById('in-progress-item').textContent = job.item_name;
+                document.getElementById('in-progress-target').textContent = job.quantity_to_produce;
+                document.getElementById('in-progress-good').textContent = job.total_good || 0;
+                document.getElementById('in-progress-scrap').textContent = job.total_scrap || 0;
+            } else {
+                card.style.display = 'none';
+            }
+        };
+
+        const renderPending = (jobs) => {
+            const table = document.getElementById('pending-jobs-table');
+            if (!jobs || jobs.length === 0) {
+                table.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No pending jobs</td></tr>';
+                return;
+            }
+            table.innerHTML = jobs.map(j => `
+                <tr data-mo="${j.mo_number}">
+                    <td>${j.mo_number}</td>
+                    <td>${j.item_name}</td>
+                    <td class="text-end">${j.quantity_to_produce}</td>
+                    <td class="text-end"><button class="btn btn-sm btn-success" onclick="startJob('${j.mo_number}')">Start Job</button></td>
+                </tr>`).join('');
+        };
+
+        const renderProductionRecords = async (moNumber) => {
+            const table = document.getElementById('production-records-table');
+            if (!moNumber) {
+                table.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No job running</td></tr>';
+                return;
+            }
+            try {
+                const response = await fetchWithAuth(`/api/dashboard/mo-details/${moNumber}`);
+                const result = await response.json();
+                if (!result.success || !result.data.production_records || result.data.production_records.length === 0) {
+                    table.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No records yet</td></tr>';
+                    return;
+                }
+                table.innerHTML = result.data.production_records.map(r => `
+                    <tr>
+                        <td>${formatTime(r.created_at)}</td>
+                        <td>${r.operator_name}</td>
+                        <td class="text-success text-end">${r.good_quantity}</td>
+                        <td class="text-danger text-end">${r.total_scrap_quantity}</td>
+                    </tr>`).join('');
+            } catch (e) {
+                table.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading records</td></tr>';
+            }
+        };
+        
+        const fetchData = async () => {
+            if (!machineCode) { document.getElementById('machine-name-title').textContent = "กรุณาเลือกเครื่องจักร"; return; }
+            
+            try {
+                const response = await fetchWithAuth(`/api/dashboard/machine-view/${machineCode}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error);
+                
+                const { machine, inProgressJob, pendingJobs } = result.data;
+                machineInfo = machine;
+                currentJobInfo = inProgressJob;
+
+                document.getElementById('machine-name-title').textContent = `${machine.machine_code} - ${machine.machine_name}`;
+                renderInProgress(inProgressJob);
+                renderPending(pendingJobs);
+                renderProductionRecords(inProgressJob ? inProgressJob.mo_number : null);
+            } catch (e) { console.error(e); }
+        };
+
+        window.startJob = async (mo_number) => {
+            if (currentJobInfo) {
+                alert('มีงานกำลังทำงานอยู่ กรุณาจบงานเก่าก่อน');
+                return;
+            }
+            if (!confirm(`ยืนยันการเริ่มงาน ${mo_number} ?`)) return;
+            try {
+                const response = await fetchWithAuth('/api/dashboard/start-specific-job', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mo_number: mo_number, machine_id: machineInfo.id })
+                });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error);
+                alert(result.message);
+                fetchData();
+            } catch (e) { alert('Error: ' + e.message); }
+        };
+        
+        document.getElementById('btn-stop-job').addEventListener('click', async () => {
+            if (!currentJobInfo) return;
+            if (!confirm(`ยืนยันการจบงาน ${currentJobInfo.mo_number} ?`)) return;
+            try {
+                const response = await fetchWithAuth('/api/dashboard/stop-job', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mo_number: currentJobInfo.mo_number })
+                });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error);
+                alert(result.message);
+                fetchData();
+            } catch (e) { alert('Error: ' + e.message); }
+        });
+
+        document.getElementById('btn-record-production').addEventListener('click', () => {
+            if (!currentJobInfo) return;
+            const returnUrl = encodeURIComponent(window.location.href);
+            window.location.href = `./record-production.html?mo_id=${currentJobInfo.id}&returnUrl=${returnUrl}`;
+        });
+
+        document.getElementById('btn-force-start').addEventListener('click', () => {
+            forceMachineStatus(1); // 1 = Running
+        });
+        document.getElementById('btn-force-stop').addEventListener('click', () => {
+            forceMachineStatus(0); // 0 = Stop
+        });
+
+        document.getElementById('btn-send-queue').addEventListener('click', async () => {
+            if (!machineInfo || !machineInfo.plc_name) {
+                alert('Machine information not loaded yet.');
+                return;
+            }
+            if (!confirm('ยืนยันการส่งคิวงานที่รอผลิตทั้งหมดไปยัง PLC?')) return;
+
+            try {
+                const response = await fetch('/api/plc/send-pending-queue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ machine_id: machineInfo.id, plc_name: machineInfo.plc_name })
+                });
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message);
+                alert(result.message);
+            } catch (e) { alert('Error sending queue: ' + e.message); }
+        });
+
+        loadSidebar();
+        fetchData();
+        setInterval(fetchData, 5000);
+    });
+    </script>
+</body>
+</html>

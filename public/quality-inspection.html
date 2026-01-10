@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>บันทึกผลตรวจสอบ QC - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <style>
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .page-body {
+                padding: 1rem !important;
+                /* Reduce padding on mobile */
+            }
+
+            .card-body {
+                padding: 1rem;
+            }
+
+            .form-label {
+                font-size: 1rem;
+            }
+
+            .btn-lg {
+                height: 50px;
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-fluid">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <h2 class="page-title">บันทึกผลการตรวจสอบคุณภาพ (Daily QC)</h2>
+                </div>
+            </div>
+            <div class="page-body p-3 p-md-4">
+                <div class="container-fluid">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">1. เลือกเครื่องจักร</label>
+                                    <select class="form-select form-control-lg" id="machine-select">
+                                        <option value="">-- กำลังโหลดเครื่องจักร --</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">2. เลือกคำสั่งผลิต (MO)</label>
+                                    <select class="form-select form-control-lg" id="mo-select" disabled>
+                                        <option value="">-- กรุณาเลือกเครื่องจักรก่อน --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="d-flex mt-4">
+                                <button class="btn btn-primary w-100 btn-lg" id="start-inspection-btn" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                        class="icon icon-tabler icon-tabler-checkbox" width="24" height="24"
+                                        viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                        <path d="M9 11l3 3l8 -8"></path>
+                                        <path d="M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9">
+                                        </path>
+                                    </svg>
+                                    เริ่มการตรวจสอบ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // เพิ่ม Active class หลังจากโหลด Sidebar แล้ว
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/quality-inspection.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                        const parentCollapse = activeLink.closest('.collapse');
+                        if (parentCollapse) {
+                            parentCollapse.classList.add('show');
+                            const dropdownToggle = parentCollapse.previousElementSibling;
+                            if (dropdownToggle && dropdownToggle.matches('.nav-link[data-bs-toggle="collapse"]')) {
+                                dropdownToggle.classList.remove('collapsed');
+                                dropdownToggle.setAttribute('aria-expanded', 'true');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            function setupInspectionForm() {
+                const startBtn = document.getElementById('start-inspection-btn');
+                const machineSelect = document.getElementById('machine-select');
+                const moSelect = document.getElementById('mo-select');
+
+                const startInspection = () => {
+                    const moNumber = moSelect.value;
+                    if (!moNumber) {
+                        alert('กรุณาเลือกคำสั่งผลิต');
+                        moSelect.focus();
+                        return;
+                    }
+                    window.location.href = `/quality-checklist.html?mo=${moNumber}`;
+                };
+
+                async function loadMachines() {
+                    try {
+                        const response = await fetchWithAuth('/api/dashboard/machines');
+                        const result = await response.json();
+                        if (result.success) {
+                            machineSelect.innerHTML = '<option value="">-- เลือกเครื่องจักร --</option>';
+                            result.data.forEach(m => {
+                                machineSelect.innerHTML += `<option value="${m.id}">${m.machine_code} - ${m.machine_name}</option>`;
+                            });
+                        } else {
+                            machineSelect.innerHTML = '<option value="">โหลดข้อมูลล้มเหลว</option>';
+                        }
+                    } catch (error) {
+                        console.error("Failed to load machines:", error);
+                        machineSelect.innerHTML = '<option value="">เกิดข้อผิดพลาด</option>';
+                    }
+                }
+
+                async function loadRunningMo(machineId) {
+                    moSelect.disabled = true;
+                    moSelect.innerHTML = '<option value="">กำลังค้นหา MO...</option>';
+                    startBtn.disabled = true;
+                    if (!machineId) {
+                        moSelect.innerHTML = '<option value="">-- กรุณาเลือกเครื่องจักรก่อน --</option>';
+                        return;
+                    }
+                    try {
+                        const response = await fetchWithAuth(`/api/dashboard/running-mo/${machineId}`);
+                        const result = await response.json();
+                        if (result.success && result.data.length > 0) {
+                            moSelect.innerHTML = result.data.map(mo => `<option value="${mo.mo_number}">${mo.mo_number}</option>`).join('');
+                            moSelect.disabled = false;
+                            startBtn.disabled = false;
+                        } else {
+                            moSelect.innerHTML = '<option value="">-- ไม่พบ MO ที่กำลังผลิต --</option>';
+                        }
+                    } catch (error) {
+                        console.error("Failed to load running MO:", error);
+                        moSelect.innerHTML = '<option value="">เกิดข้อผิดพลาด</option>';
+                    }
+                }
+
+                startBtn.addEventListener('click', startInspection);
+                machineSelect.addEventListener('change', () => loadRunningMo(machineSelect.value));
+                loadMachines();
+            }
+
+            // --- เรียกใช้งานฟังก์ชัน ---
+            loadSidebar();
+            loadUserInfo();
+            setupInspectionForm();
+        });
+    </script>
+</body>
+
+</html>

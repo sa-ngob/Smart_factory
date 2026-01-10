@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>Register - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+  </head>
+  <body class="d-flex flex-column">
+    <div class="page page-center">
+      <div class="container container-tight py-4">
+        <div class="text-center mb-4">
+          <a href="." class="navbar-brand navbar-brand-autodark"><img src="/espa-logo.png" height="36" alt="Logo"></a>
+        </div>
+        <div class="card card-md">
+            <div class="card-body">
+              <h2 class="card-title text-center mb-4">สร้างบัญชีใหม่</h2>
+              
+              <div id="alert-container"></div>
+              
+              <form action="/auth/register" method="POST" autocomplete="off">
+                <div class="mb-3">
+                  <label class="form-label">ชื่อ-นามสกุล</label>
+                  <input type="text" class="form-control" placeholder="กรอกชื่อ-นามสกุล" name="fullName" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">อีเมล</label>
+                  <input type="email" class="form-control" placeholder="กรอกอีเมล" name="email" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">รหัสผ่าน</label>
+                  <input type="password" class="form-control" placeholder="กรอกรหัสผ่าน" autocomplete="off" name="password" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-check">
+                    <input type="checkbox" class="form-check-input" required/>
+                    <span class="form-check-label">ยอมรับ <a href="#" tabindex="-1">ข้อตกลงและเงื่อนไขการใช้งาน</a></span>
+                  </label>
+                </div>
+                <div class="form-footer">
+                  <button type="submit" class="btn btn-primary w-100">สร้างบัญชีใหม่</button>
+                </div>
+              </form>
+            </div>
+        </div>
+        <div class="text-center text-muted mt-3">
+          มีบัญชีอยู่แล้ว? <a href="./login.html" tabindex="-1">ลงชื่อเข้าใช้</a>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script>
+      // ส่วน JavaScript นี้ใช้สำหรับแสดง Error ที่ถูกส่งกลับมาทาง URL parameter
+      // ซึ่งตอนนี้เราไม่ได้ใช้แล้ว เพราะฟอร์มจะ redirect ไปหน้า login โดยตรง
+      // แต่เก็บไว้เผื่อมีการปรับปรุงในอนาคตได้ครับ
+      document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const error = params.get('error');
+        const success = params.get('success');
+        const container = document.getElementById('alert-container');
+        let alertHtml = '';
+
+        if (error === 'email_exists') {
+          alertHtml = `<div class="alert alert-danger" role="alert">อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น</div>`;
+        } else if (error === 'missing_fields') {
+          alertHtml = `<div class="alert alert-danger" role="alert">กรุณากรอกข้อมูลให้ครบทุกช่อง</div>`;
+        }
+        
+        if (alertHtml) {
+          container.innerHTML = alertHtml;
+        }
+      });
+    </script>
+  </body>
+</html>

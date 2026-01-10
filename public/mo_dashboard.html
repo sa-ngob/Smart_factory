@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>MO Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <style>
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">วิเคราะห์ใบสั่งผลิต (MO Analysis)</h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <div class="d-flex">
+                                <div class="btn-group me-2" role="group" id="period-filter">
+                                    <button type="button" class="btn btn-outline-secondary active"
+                                        data-period="daily">Today</button>
+                                    <button type="button" class="btn btn-outline-secondary"
+                                        data-period="weekly">Week</button>
+                                    <button type="button" class="btn btn-outline-secondary"
+                                        data-period="monthly">Month</button>
+                                </div>
+                                <select class="form-select d-inline-block w-auto me-2" id="machine-filter">
+                                    <option value="all">ทุกเครื่องจักร</option>
+                                </select>
+                                <div style="min-width: 250px;"><select class="form-select" id="mo-select">
+                                        <option value="">-- เลือกใบสั่งผลิต --</option>
+                                    </select></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div id="dashboard-content" class="d-none">
+                        <div class="row g-4 mb-4">
+                            <div class="col-6 col-lg-3">
+                                <div class="card card-body">
+                                    <div class="subheader">เป้าหมาย (Target)</div>
+                                    <div class="kpi-value text-primary" id="kpi-total-product">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="card card-body">
+                                    <div class="subheader">ของดี (Good)</div>
+                                    <div class="kpi-value text-success" id="kpi-total-good">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="card card-body">
+                                    <div class="subheader">ของเสีย (Scrap)</div>
+                                    <div class="kpi-value text-danger" id="kpi-total-scrap">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="card card-body">
+                                    <div class="subheader">คงเหลือ (Remaining)</div>
+                                    <div class="kpi-value text-warning" id="kpi-diff">0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-lg-8">
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h3 class="card-title">ข้อมูลใบสั่งผลิต</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="summary-container"></div>
+                                    </div>
+                                </div>
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 class="card-title">บันทึกการผลิต</h3>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table card-table table-vcenter">
+                                            <thead>
+                                                <tr>
+                                                    <th>วันที่/เวลา</th>
+                                                    <th>ผู้บันทึก</th>
+                                                    <th class="text-end">ของดี</th>
+                                                    <th class="text-end">ของเสีย</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="production-records-table"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h3 class="card-title">สัดส่วนของเสีย</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div style="height: 280px;"><canvas id="scrapChart"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 class="card-title">กราฟข้อมูลระหว่างการผลิต (Production Sensors)</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div style="height: 350px;"><canvas id="sensorChart"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 class="card-title">กราฟ Cycle Time</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div style="height: 350px;"><canvas id="cycleTimeChart"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 class="card-title">ยอดการผลิตแยกตามกะ (Daily Production by Shift)</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div style="height: 350px;"><canvas id="productionChart"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="placeholder-text" class="text-center text-muted py-5">
+                        <h3>กรุณาเลือกใบสั่งผลิตเพื่อดูข้อมูล</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script src="/js/auth-client.js"></script>
+    <script>
+        function setActiveMenuItem(id) { }
+        document.addEventListener("DOMContentLoaded", async function () {
+            let sensorChart, scrapChart, cycleTimeChart, productionChart;
+            const moSelect = document.getElementById('mo-select');
+            const machineFilterSelect = document.getElementById('machine-filter');
+            const periodFilterButtons = document.getElementById('period-filter');
+            let currentPeriod = 'daily';
+            let currentMachineId = 'all';
+
+            const formatDateTime = (dateString) => {
+                if (!dateString) return '-';
+                const date = new Date(dateString);
+                return date.toLocaleString('th-TH', {
+                    day: '2-digit', month: 'short', year: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+            };
+
+            async function loadMoList() {
+                const url = new URL(window.location.origin + '/api/dashboard/manufacturing-orders');
+                if (currentMachineId !== 'all') url.searchParams.append('machine_id', currentMachineId);
+                url.searchParams.append('period', currentPeriod);
+                try {
+                    const response = await fetchWithAuth(url);
+                    const result = await response.json();
+                    moSelect.innerHTML = '<option value="">-- เลือกใบสั่งผลิต --</option>';
+                    if (result.success && result.data.length > 0) {
+                        result.data.forEach(mo => moSelect.add(new Option(`${mo.mo_number} (${mo.item_code})`, mo.mo_number)));
+                        if (moSelect.options.length > 1) { moSelect.selectedIndex = 1; loadMoDetails(moSelect.value); }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            async function loadMoDetails(moNumber) {
+                if (!moNumber) return;
+                try {
+                    const res = await fetchWithAuth(`/api/dashboard/mo-details/${moNumber}`);
+                    const json = await res.json();
+                    if (!json.success) return;
+                    document.getElementById('dashboard-content').classList.remove('d-none');
+                    document.getElementById('placeholder-text').classList.add('d-none');
+                    const { summary, time_series, production_records, scrap_details, cycle_series, shift_series } = json.data;
+                    const totalGood = (production_records || []).reduce((s, r) => s + (r.good_quantity || 0), 0);
+                    const totalScrap = (production_records || []).reduce((s, r) => s + (r.total_scrap_quantity || 0), 0);
+                    const target = summary.quantity_to_produce || 0;
+                    document.getElementById('kpi-total-product').innerText = target.toLocaleString();
+                    document.getElementById('kpi-total-good').innerText = totalGood.toLocaleString();
+                    document.getElementById('kpi-total-scrap').innerText = totalScrap.toLocaleString();
+                    document.getElementById('kpi-diff').innerText = (target - (totalGood + totalScrap)).toLocaleString();
+                    const progress = target > 0 ? (((totalGood + totalScrap) / target) * 100).toFixed(1) : 0;
+                    document.getElementById('summary-container').innerHTML = `<div class="row"><div class="col-6 mb-2"><strong>MO:</strong> ${summary.mo_number}</div><div class="col-6 mb-2"><strong>Item:</strong> ${summary.item_name}</div><div class="col-6 mb-2"><strong>Machine:</strong> ${summary.machine_code}</div><div class="col-6 mb-2"><strong>Status:</strong> <span class="badge bg-blue-lt">${summary.status}</span></div></div><div class="mt-2"><div class="d-flex justify-content-between"><span>Progress</span><span>${progress}%</span></div><div class="progress"><div class="progress-bar" style="width: ${progress}%"></div></div></div>`;
+                    document.getElementById('production-records-table').innerHTML = (production_records || []).map(r => `<tr><td>${formatDateTime(r.record_date)}</td><td>${r.operator_name}</td><td class="text-success text-end">${r.good_quantity}</td><td class="text-danger text-end">${r.total_scrap_quantity}</td></tr>`).join('');
+                    updateCharts(time_series, scrap_details, cycle_series, shift_series);
+                } catch (e) { console.error(e); }
+            }
+
+            function updateCharts(sensors, scraps, cycles, shifts) {
+                const ctx1 = document.getElementById('sensorChart').getContext('2d');
+                if (sensorChart) sensorChart.destroy();
+                sensorChart = new Chart(ctx1, {
+                    type: 'line',
+                    data: {
+                        labels: (sensors || []).map(d => new Date(d.timestamp).toLocaleTimeString('th-TH')),
+                        datasets: [
+                            { label: 'Core Temp', data: (sensors || []).map(d => d.mold_temp_core), borderColor: '#206bc4', tension: 0.4 },
+                            { label: 'Cavity Temp', data: (sensors || []).map(d => d.mold_temp_cavity), borderColor: '#4299e1', tension: 0.4 },
+                            { label: 'Dry Temp', data: (sensors || []).map(d => d.material_dry_temp), borderColor: '#f59f00', tension: 0.4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { display: true, title: { display: true, text: 'Time' } },
+                            y: { display: true, title: { display: true, text: 'Temperature (°C)' } }
+                        },
+                        plugins: {
+                            zoom: {
+                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                                pan: { enabled: true, mode: 'x' }
+                            }
+                        }
+                    }
+                });
+
+                const ctxCycle = document.getElementById('cycleTimeChart').getContext('2d');
+                if (cycleTimeChart) cycleTimeChart.destroy();
+                cycleTimeChart = new Chart(ctxCycle, {
+                    type: 'line',
+                    data: {
+                        labels: (cycles || []).map(d => d.mold_count),
+                        datasets: [
+                            { label: 'Cycle Time (sec)', data: (cycles || []).map(d => d.cycle_time_sec), borderColor: '#2fb344', backgroundColor: 'rgba(47, 179, 68, 0.1)', fill: true, tension: 0.1 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { display: true, title: { display: true, text: 'Mold Count' } },
+                            y: { display: true, title: { display: true, text: 'Seconds' }, beginAtZero: true }
+                        },
+                        plugins: {
+                            zoom: {
+                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                                pan: { enabled: true, mode: 'x' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function (context) {
+                                        return 'Mold Count: ' + context[0].label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const ctxProd = document.getElementById('productionChart').getContext('2d');
+                if (productionChart) productionChart.destroy();
+
+                // Process shift data for bar chart
+                const labels = [...new Set((shifts || []).map(s => {
+                    const d = new Date(s.shift_date);
+                    return d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+                }))];
+                const dayData = labels.map(dateLabel => {
+                    const record = (shifts || []).find(s => {
+                        const d = new Date(s.shift_date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+                        return d === dateLabel && s.shift_name === 'Day';
+                    });
+                    return record ? record.produced_qty : 0;
+                });
+                const nightData = labels.map(dateLabel => {
+                    const record = (shifts || []).find(s => {
+                        const d = new Date(s.shift_date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+                        return d === dateLabel && s.shift_name === 'Night';
+                    });
+                    return record ? record.produced_qty : 0;
+                });
+
+                productionChart = new Chart(ctxProd, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'กะเช้า (Day)', data: dayData, backgroundColor: '#206bc4' },
+                            { label: 'กะดึก (Night)', data: nightData, backgroundColor: '#182433' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: false },
+                            y: { stacked: false, beginAtZero: true, title: { display: true, text: 'Production Qty' } }
+                        }
+                    }
+                });
+
+                const ctx2 = document.getElementById('scrapChart').getContext('2d');
+                if (scrapChart) scrapChart.destroy();
+                scrapChart = new Chart(ctx2, { type: 'doughnut', data: { labels: (scraps || []).map(s => s.defect_description), datasets: [{ data: (scraps || []).map(s => s.total_quantity), backgroundColor: ['#d63939', '#f59f00', '#206bc4'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+            }
+
+            periodFilterButtons.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { periodFilterButtons.querySelector('.active').classList.remove('active'); e.target.classList.add('active'); currentPeriod = e.target.dataset.period; loadMoList(); } });
+            machineFilterSelect.addEventListener('change', e => { currentMachineId = e.target.value; loadMoList(); });
+            moSelect.addEventListener('change', e => loadMoDetails(e.target.value));
+            loadSidebar().catch(e => { });
+            try { const res = await fetchWithAuth('/api/dashboard/machines'); const json = await res.json(); if (json.success) json.data.forEach(m => machineFilterSelect.add(new Option(m.machine_code, m.id))); } catch (e) { }
+            loadMoList();
+        });
+    </script>
+</body>
+
+</html>

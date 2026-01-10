@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1.0, user-scalable=0" />
+    <title>ตรวจสอบ Injection Parameters - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <!-- Cropper.js CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet" />
+    <style>
+        /* Custom Styles for Machine Interface Look */
+        :root {
+            --tblr-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+        }
+
+        .machine-panel {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 8px;
+            /* Reduced for mobile fit, but spacious enough */
+            border-radius: 6px;
+            height: 100%;
+            border: 1px solid #334155;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            background: #2563eb;
+            color: white;
+            padding: 6px 10px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .param-table {
+            width: 100%;
+            font-size: 0.85rem;
+            border-collapse: separate;
+            border-spacing: 0 4px;
+            /* Space between rows */
+        }
+
+        .param-table th {
+            text-align: center;
+            padding: 4px;
+            color: #94a3b8;
+            font-weight: 500;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .param-table td {
+            padding: 2px;
+        }
+
+        .param-table input {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: #38bdf8;
+            /* Cyan for values */
+            text-align: right;
+            padding: 8px 6px;
+            /* Larger touch target */
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1rem;
+            /* 16px to prevent zoom on iOS */
+            border-radius: 4px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .param-table input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: #1e293b;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+
+        .param-table input:disabled {
+            background: #1e293b;
+            border-color: transparent;
+            color: #64748b;
+        }
+
+        .row-label {
+            color: #cbd5e1;
+            font-weight: 600;
+            white-space: nowrap;
+            padding-right: 6px;
+            font-size: 0.8rem;
+        }
+
+        /* Specific header colors */
+        .header-mold {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+
+        .header-open {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        }
+
+        .header-inject {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        .header-charge {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+        }
+
+        .header-hold {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        }
+
+        .header-eject {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        /* Floating Button for Mobile */
+        .floating-scan-btn {
+            position: fixed;
+            bottom: 80px;
+            /* Above the save bar */
+            right: 20px;
+            z-index: 1050;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f59f00;
+            /* Orange to stand out */
+            color: white;
+            border: none;
+        }
+
+        .floating-scan-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Overlay */
+        .ocr-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Save Button Sticky on Mobile */
+        @media (max-width: 768px) {
+            .page-body {
+                padding-bottom: 80px;
+            }
+
+            /* Space for FAB */
+
+            .btn-save-mobile-container {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background: #1e293b;
+                padding: 10px;
+                z-index: 1040;
+                border-top: 1px solid #334155;
+                display: flex;
+                gap: 10px;
+            }
+
+            .desktop-save {
+                display: none !important;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .btn-save-mobile-container {
+                display: none;
+            }
+        }
+
+        /* Crop Modal Styles */
+        .img-container {
+            max-height: 50vh;
+            background-color: #000;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        #crop-image {
+            max-width: 100%;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+            <!-- Sidebar loaded via JS -->
+        </aside>
+
+        <div class="page-wrapper">
+            <!-- Header -->
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">Injection Parameter Check</h2>
+                            <div class="text-muted mt-1">Machine Parameter Inspection</div>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <button class="btn btn-primary d-none d-sm-inline-block" id="btn-scan-global">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                    viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M4 7v-1a2 2 0 0 1 2 -2h2" />
+                                    <path d="M4 17v1a2 2 0 0 0 2 2h2" />
+                                    <path d="M16 4h2a2 2 0 0 1 2 2v1" />
+                                    <path d="M16 20h2a2 2 0 0 0 2 -2v-1" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                                Scan Screen (OCR)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-body">
+                <div class="container-xl">
+
+                    <!-- Selectors -->
+                    <div class="card mb-3">
+                        <div class="card-body py-2">
+                            <div class="row g-2">
+                                <div class="col-12 col-md-5">
+                                    <label class="form-label small">Machine</label>
+                                    <select class="form-select" id="machine-select"></select>
+                                </div>
+                                <div class="col-12 col-md-5">
+                                    <label class="form-label small">Manufacturing Order (MO)</label>
+                                    <select class="form-select" id="mo-select" disabled>
+                                        <option value="">-- Select Machine First --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end desktop-save">
+                                    <button class="btn btn-success w-100" id="btn-save-all-desktop">
+                                        Save Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Inputs for OCR -->
+                    <input type="file" id="file-global-ocr" class="d-none" accept="image/*" capture="environment">
+
+                    <!-- Main Grid Layout -->
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2">
+
+                        <!-- MOLD CLOSE -->
+                        <div class="col">
+                            <div class="machine-panel">
+                                <div class="panel-header header-mold">
+                                    <span>MoldBd Close</span>
+                                </div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mode</th>
+                                            <th>Prs</th>
+                                            <th>Spd</th>
+                                            <th>EndPos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="row-label">#1</td>
+                                            <td><input type="number" step="0.1" name="mold_close_1_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_1_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_1_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#2</td>
+                                            <td><input type="number" step="0.1" name="mold_close_2_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_2_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_2_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#3</td>
+                                            <td><input type="number" step="0.1" name="mold_close_3_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_3_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_3_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">Low</td>
+                                            <td><input type="number" step="0.1" name="mold_close_low_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_low_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_low_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">High</td>
+                                            <td><input type="number" step="0.1" name="mold_close_high_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_high_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_close_high_pos"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- MOLD OPEN -->
+                        <div class="col">
+                            <div class="machine-panel">
+                                <div class="panel-header header-open">
+                                    <span>Open</span>
+                                </div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mode</th>
+                                            <th>Prs</th>
+                                            <th>Spd</th>
+                                            <th>EndPos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="row-label">#1</td>
+                                            <td><input type="number" step="0.1" name="mold_open_1_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_1_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_1_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#2</td>
+                                            <td><input type="number" step="0.1" name="mold_open_2_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_2_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_2_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#3</td>
+                                            <td><input type="number" step="0.1" name="mold_open_3_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_3_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_3_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#4</td>
+                                            <td><input type="number" step="0.1" name="mold_open_4_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_4_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_4_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#5</td>
+                                            <td><input type="number" step="0.1" name="mold_open_5_prs"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_5_spd"></td>
+                                            <td><input type="number" step="0.1" name="mold_open_5_pos"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- EJECT -->
+                        <div class="col">
+                            <div class="machine-panel">
+                                <div class="panel-header header-eject">
+                                    <span>Eject</span>
+                                </div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mode</th>
+                                            <th>Prs</th>
+                                            <th>Spd</th>
+                                            <th>Time</th>
+                                            <th>Pos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="row-label">Adv1</td>
+                                            <td><input type="number" step="0.1" name="ej_adv_1_prs"></td>
+                                            <td><input type="number" step="0.1" name="ej_adv_1_spd"></td>
+                                            <td><input type="number" step="0.1" name="ej_adv_1_time"></td>
+                                            <td><input type="number" step="0.1" name="ej_adv_1_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">Adv2</td>
+                                            <td><input type="number" step="0.1" name="ej_adv_2_prs"></td>
+                                            <td><input type="number" step="0.1" name="ej_adv_2_spd"></td>
+                                            <td><input type="number" step="0.1" name="ej_adv_2_time"></td>
+                                            <td><input type="number" step="0.1" name="ej_adv_2_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">Ret1</td>
+                                            <td><input type="number" step="0.1" name="ej_ret_1_prs"></td>
+                                            <td><input type="number" step="0.1" name="ej_ret_1_spd"></td>
+                                            <td><input type="number" step="0.1" name="ej_ret_1_time"></td>
+                                            <td><input type="number" step="0.1" name="ej_ret_1_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">Ret2</td>
+                                            <td><input type="number" step="0.1" name="ej_ret_2_prs"></td>
+                                            <td><input type="number" step="0.1" name="ej_ret_2_spd"></td>
+                                            <td><input type="number" step="0.1" name="ej_ret_2_time"></td>
+                                            <td><input type="number" step="0.1" name="ej_ret_2_pos"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- CHARGE -->
+                        <div class="col">
+                            <div class="machine-panel">
+                                <div class="panel-header header-charge">
+                                    <span>Charge</span>
+                                </div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Step</th>
+                                            <th>Prs</th>
+                                            <th>Spd</th>
+                                            <th>Back</th>
+                                            <th>Pos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="row-label">#1</td>
+                                            <td><input type="number" step="0.1" name="chg_1_prs"></td>
+                                            <td><input type="number" step="0.1" name="chg_1_spd"></td>
+                                            <td><input type="number" step="0.1" name="chg_1_back"></td>
+                                            <td><input type="number" step="0.1" name="chg_1_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#2</td>
+                                            <td><input type="number" step="0.1" name="chg_2_prs"></td>
+                                            <td><input type="number" step="0.1" name="chg_2_spd"></td>
+                                            <td><input type="number" step="0.1" name="chg_2_back"></td>
+                                            <td><input type="number" step="0.1" name="chg_2_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#3</td>
+                                            <td><input type="number" step="0.1" name="chg_3_prs"></td>
+                                            <td><input type="number" step="0.1" name="chg_3_spd"></td>
+                                            <td><input type="number" step="0.1" name="chg_3_back"></td>
+                                            <td><input type="number" step="0.1" name="chg_3_pos"></td>
+                                        </tr>
+                                        <!-- Suck row -->
+                                        <tr>
+                                            <td class="row-label">Suck</td>
+                                            <td><input type="number" step="0.1" name="suck_prs"></td>
+                                            <td><input type="number" step="0.1" name="suck_spd"></td>
+                                            <td class="text-center text-muted" style="font-size:0.7rem;">(Time)</td>
+                                            <td><input type="number" step="0.1" name="suck_dist"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- INJECT -->
+                        <div class="col">
+                            <div class="machine-panel">
+                                <div class="panel-header header-inject">
+                                    <span>Inject</span>
+                                </div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Step</th>
+                                            <th>Prs</th>
+                                            <th>Spd</th>
+                                            <th>EndPos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="row-label">#1</td>
+                                            <td><input type="number" step="0.1" name="inj_1_prs"></td>
+                                            <td><input type="number" step="0.1" name="inj_1_spd"></td>
+                                            <td><input type="number" step="0.1" name="inj_1_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#2</td>
+                                            <td><input type="number" step="0.1" name="inj_2_prs"></td>
+                                            <td><input type="number" step="0.1" name="inj_2_spd"></td>
+                                            <td><input type="number" step="0.1" name="inj_2_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#3</td>
+                                            <td><input type="number" step="0.1" name="inj_3_prs"></td>
+                                            <td><input type="number" step="0.1" name="inj_3_spd"></td>
+                                            <td><input type="number" step="0.1" name="inj_3_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#4</td>
+                                            <td><input type="number" step="0.1" name="inj_4_prs"></td>
+                                            <td><input type="number" step="0.1" name="inj_4_spd"></td>
+                                            <td><input type="number" step="0.1" name="inj_4_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#5</td>
+                                            <td><input type="number" step="0.1" name="inj_5_prs"></td>
+                                            <td><input type="number" step="0.1" name="inj_5_spd"></td>
+                                            <td><input type="number" step="0.1" name="inj_5_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#6</td>
+                                            <td><input type="number" step="0.1" name="inj_6_prs"></td>
+                                            <td><input type="number" step="0.1" name="inj_6_spd"></td>
+                                            <td><input type="number" step="0.1" name="inj_6_pos"></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" class="text-end pe-2 text-warning fw-bold">Inject Time:</td>
+                                            <td colspan="2"><input type="number" step="0.01" name="inj_time"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- HOLD -->
+                        <div class="col">
+                            <div class="machine-panel">
+                                <div class="panel-header header-hold">
+                                    <span>Hold</span>
+                                </div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Step</th>
+                                            <th>Prs</th>
+                                            <th>Spd</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="row-label">#1</td>
+                                            <td><input type="number" step="0.1" name="hold_1_prs"></td>
+                                            <td><input type="number" step="0.1" name="hold_1_spd"></td>
+                                            <td><input type="number" step="0.1" name="hold_1_time"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#2</td>
+                                            <td><input type="number" step="0.1" name="hold_2_prs"></td>
+                                            <td><input type="number" step="0.1" name="hold_2_spd"></td>
+                                            <td><input type="number" step="0.1" name="hold_2_time"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#3</td>
+                                            <td><input type="number" step="0.1" name="hold_3_prs"></td>
+                                            <td><input type="number" step="0.1" name="hold_3_spd"></td>
+                                            <td><input type="number" step="0.1" name="hold_3_time"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#4</td>
+                                            <td><input type="number" step="0.1" name="hold_4_prs"></td>
+                                            <td><input type="number" step="0.1" name="hold_4_spd"></td>
+                                            <td><input type="number" step="0.1" name="hold_4_time"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="row-label">#5</td>
+                                            <td><input type="number" step="0.1" name="hold_5_prs"></td>
+                                            <td><input type="number" step="0.1" name="hold_5_spd"></td>
+                                            <td><input type="number" step="0.1" name="hold_5_time"></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" class="text-end pe-2 text-warning fw-bold">Cool Time:</td>
+                                            <td colspan="2"><input type="number" step="0.01" name="mold_cool_time"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Bottom: Temp -->
+                        <div class="col-12">
+                            <div class="machine-panel">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                    <div class="panel-header mb-0 header-mold me-3 border-0">Temp Set</div>
+                                    <div class="d-flex g-2 flex-grow-1" style="overflow-x:auto;">
+                                        <input type="number" name="temp_set_1" class="ms-1" placeholder="320"
+                                            style="min-width:60px;">
+                                        <input type="number" name="temp_set_2" class="ms-1" placeholder="325"
+                                            style="min-width:60px;">
+                                        <input type="number" name="temp_set_3" class="ms-1" placeholder="295"
+                                            style="min-width:60px;">
+                                        <input type="number" name="temp_set_4" class="ms-1" placeholder="280"
+                                            style="min-width:60px;">
+                                        <input type="number" name="temp_set_5" class="ms-1" placeholder="260"
+                                            style="min-width:60px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="col-12 mt-3 mb-4">
+                            <label class="form-label text-light">Inspector Notes</label>
+                            <textarea class="form-control" id="check-notes" rows="2"
+                                style="background:#1e293b; color:white; border-color:#334155;"></textarea>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Scan Button -->
+    <button class="btn btn-primary rounded-circle p-3 floating-scan-btn d-block d-sm-none" id="btn-scan-mobile">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="32" height="32" viewBox="0 0 24 24" stroke-width="2"
+            stroke="currentColor" fill="none">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M4 7v-1a2 2 0 0 1 2 -2h2" />
+            <path d="M4 17v1a2 2 0 0 0 2 2h2" />
+            <path d="M16 4h2a2 2 0 0 1 2 2v1" />
+            <path d="M16 20h2a2 2 0 0 0 2 -2v-1" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+    </button>
+
+    <!-- Mobile Sticky Save Bar -->
+    <div class="btn-save-mobile-container">
+        <button class="btn btn-success w-100" id="btn-save-all-mobile">
+            Save Data
+        </button>
+    </div>
+
+    <!-- Modal for Cropping -->
+    <div class="modal modal-blur fade" id="crop-modal" tabindex="-1" role="dialog" aria-hidden="true"
+        data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select Area (ROI)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="img-container">
+                        <img id="crop-image" src="" alt="Picture">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <div class="vr"></div>
+                    <button type="button" class="btn btn-icon btn-outline-secondary" id="btn-rotate-left"
+                        title="Rotate Left">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+                            stroke-width="2" stroke="currentColor" fill="none">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <path d="M19.95 11a8 8 0 1 0 -.5 5.335" />
+                            <path d="M12.5 15.5l-2.5 -2.5l2.5 -2.5" />
+                            <path d="M12 18v-13" />
+                        </svg>
+                    </button>
+                    <button type="button" class="btn btn-icon btn-outline-secondary" id="btn-rotate-right"
+                        title="Rotate Right">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+                            stroke-width="2" stroke="currentColor" fill="none">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <path d="M4.05 11a8 8 0 1 1 .5 5.335" />
+                            <path d="M11.5 15.5l2.5 -2.5l-2.5 -2.5" />
+                            <path d="M12 18v-13" />
+                        </svg>
+                    </button>
+                    <div class="ms-auto">
+                        <button type="button" class="btn btn-primary" id="btn-confirm-crop">
+                            Scan Selected Area
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="ocr-overlay" id="ocr-overlay">
+        <div class="spinner-border ocr-spinner mb-3" role="status"></div>
+        <h3 class="text-white" id="ocr-status-text">Processing Image...</h3>
+        <p class="text-white-50 small">Extracting data from machine screen</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Cropper.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <!-- Tesseract CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="/js/auth-client.js"></script>
+    <script src="/js/injection-check.js"></script>
+
+</body>
+
+</html>

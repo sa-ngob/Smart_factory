@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Logbook การเงิน - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+            <div class="container-fluid" id="sidebar-container"></div>
+        </aside>    
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl">
+                    <h2 class="page-title">Logbook การเงิน (ติดตามการรับชำระ)</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table card-table table-vcenter text-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>วันที่วางบิล</th>
+                                        <th>เลขที่ใบวางบิล</th>
+                                        <th>ลูกค้า</th>
+                                        <th class="text-end">ยอดวางบิล</th>
+                                        <th class="text-center">สถานะ</th>
+                                        <th>วันที่รับชำระ</th>
+                                        <th>เลขที่ใบเสร็จ</th>
+                                        <th>การกระทำ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logbook-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal modal-blur fade" id="modal-confirm-payment" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">ยืนยันการรับชำระเงิน</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modal-receipt-id">
+                    <p>ยืนยันการรับชำระเงินสำหรับใบวางบิล: <strong id="modal-bn-number"></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label required">วันที่ชำระเงินจริง</label>
+                        <input type="date" class="form-control" id="modal-payment-date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label required">ช่องทางการชำระ</label>
+                        <select class="form-select" id="modal-payment-method">
+                            <option value="โอนเงิน">โอนเงิน</option>
+                            <option value="รับเช็คแล้ว">รับเช็คแล้ว</option>
+                            <option value="จ่ายเงินสด">จ่ายเงินสด</option>
+                        </select>
+                    </div>
+                     <div class="mb-3">
+                        <label class="form-label">หมายเหตุ</label>
+                        <textarea class="form-control" id="modal-notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn me-auto" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="modal-save-button">ยืนยัน</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const confirmPaymentModal = new bootstrap.Modal(document.getElementById('modal-confirm-payment'));
+
+            // โหลด Sidebar
+            fetch('api/sidebar').then(r => r.text()).then(d => { document.getElementById('sidebar-container').innerHTML = d; });
+            
+            const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '-';
+            const formatCurrency = (num) => (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            const renderTable = (logs) => {
+                const tableBody = document.getElementById('logbook-table-body');
+                if (logs.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบข้อมูล</td></tr>';
+                    return;
+                }
+                tableBody.innerHTML = logs.map(log => {
+                    const isPaid = log.receipt_status === 'paid';
+                    let statusHtml = `<span class="badge bg-warning-lt">รอโอนเงิน</span>`;
+                    if (log.status === 'collected' && isPaid) {
+                        statusHtml = `<span class="badge bg-success-lt">รับชำระแล้ว</span>`;
+                    } else if (!log.receipt_id) {
+                         statusHtml = `<span class="badge bg-secondary-lt">ยังไม่ออกใบเสร็จ</span>`;
+                    }
+                    
+                    const actionButton = !isPaid && log.receipt_id
+                        ? `<button class="btn btn-sm btn-outline-primary btn-confirm-payment" data-receipt-id="${log.receipt_id}" data-bn-number="${log.bn_number}">อัปเดตสถานะ</button>`
+                        : (isPaid ? 'เรียบร้อย' : '-');
+
+                    return `
+                        <tr>
+                            <td>${formatDate(log.billing_date)}</td>
+                            <td><a href="/billing-note-detail.html?id=${log.id}" target="_blank">${log.bn_number}</a></td>
+                            <td>${log.customer_name}</td>
+                            <td class="text-end">${formatCurrency(log.total_amount)}</td>
+                            <td class="text-center">${statusHtml}</td>
+                            <td>${formatDate(log.payment_date)}</td>
+                            <td>${log.receipt_number || '-'}</td>
+                            <td class="text-center">${actionButton}</td>
+                        </tr>
+                    `;
+                }).join('');
+            };
+
+            const loadData = async () => {
+                const tableBody = document.getElementById('logbook-table-body');
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">กำลังโหลด...</td></tr>';
+                try {
+                    const response = await fetch('/api/reports/financial-logbook');
+                    const result = await response.json();
+                    if (result.success) renderTable(result.data);
+                } catch (error) {
+                    console.error("Failed to load logbook:", error);
+                    tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">เกิดข้อผิดพลาด</td></tr>';
+                }
+            };
+            
+            // --- Event Listeners ---
+            document.body.addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn-confirm-payment')) {
+                    const receiptId = e.target.dataset.receiptId;
+                    const bnNumber = e.target.dataset.bnNumber;
+                    
+                    document.getElementById('modal-receipt-id').value = receiptId;
+                    document.getElementById('modal-bn-number').textContent = bnNumber;
+                    document.getElementById('modal-payment-date').value = new Date().toISOString().split('T')[0];
+                    confirmPaymentModal.show();
+                }
+            });
+
+            document.getElementById('modal-save-button').addEventListener('click', async function() {
+                const receiptId = document.getElementById('modal-receipt-id').value;
+                const payload = {
+                    payment_date: document.getElementById('modal-payment-date').value,
+                    payment_method: document.getElementById('modal-payment-method').value,
+                    notes: document.getElementById('modal-notes').value
+                };
+
+                this.disabled = true; this.innerHTML = "กำลังบันทึก...";
+                try {
+                    const response = await fetch(`/api/receipts/${receiptId}/confirm-payment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error);
+
+                    alert('อัปเดตสถานะสำเร็จ!');
+                    confirmPaymentModal.hide();
+                    loadData(); // โหลดข้อมูลใหม่เพื่ออัปเดตตาราง
+                } catch (error) {
+                    alert('เกิดข้อผิดพลาด: ' + error.message);
+                } finally {
+                    this.disabled = false; this.innerHTML = "ยืนยัน";
+                }
+            });
+
+            loadData(); // โหลดข้อมูลครั้งแรกเมื่อหน้าเว็บพร้อม
+        });
+    </script>
+</body>
+</html>

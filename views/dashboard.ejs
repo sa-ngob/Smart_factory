@@ -1,0 +1,164 @@
+<div class="page-wrapper">
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="page-header d-print-none">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h2 class="page-title">ยินดีต้อนรับ, <%= user.fullName %>! 👋</h2>
+                        <div class="text-muted mt-1">ภาพรวมการทำงานของโรงงาน</div>
+                    </div>
+                    <div class="col-auto ms-auto d-print-none">
+                        <div class="btn-list" id="period-filter">
+                            <button type="button" class="btn active" data-period="monthly">รายเดือน</button>
+                            <button type="button" class="btn" data-period="daily">รายวัน</button>
+                            <button type="button" class="btn" data-period="yearly">รายปี</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row row-deck row-cards" id="kpi-cards">
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
+                                <li class="nav-item"><a href="#tabs-production" class="nav-link active"
+                                        data-bs-toggle="tab">ภาพรวมการผลิต</a></li>
+                                <li class="nav-item"><a href="#tabs-machines" class="nav-link"
+                                        data-bs-toggle="tab">สถานะเครื่องจักร</a></li>
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <div class="tab-content" id="dashboard-tabs-content">
+                                <div class="tab-pane active show" id="tabs-production">
+                                </div>
+                                <div class="tab-pane" id="tabs-machines">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let currentPeriod = 'monthly';
+
+        // --- ฟังก์ชัน Render (จากไฟล์เดิมของคุณ) ---
+        const renderKpiCards = (data) => {
+            const container = document.getElementById('kpi-cards');
+            const formattedSales = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(data.totalSales);
+            container.innerHTML = `
+                <div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body"><div class="d-flex align-items-center"><div class="subheader">ยอดขาย</div></div><div class="d-flex align-items-baseline"><div class="h1 mb-0 me-2">${formattedSales}</div></div></div></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body"><div class="d-flex align-items-center"><div class="subheader">ใบสั่งผลิต</div></div><div class="d-flex align-items-baseline"><div class="h1 mb-0 me-2">${data.totalMOs}</div><div class="ms-auto"><span>ใบ</span></div></div></div></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body"><div class="d-flex align-items-center"><div class="subheader">OEE เฉลี่ย</div></div><div class="d-flex align-items-baseline"><div class="h1 mb-0 me-2">${parseFloat(data.averageOEE).toFixed(2)}%</div></div></div></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body"><div class="d-flex align-items-center"><div class="subheader">เครื่องจักรทำงาน</div></div><div class="d-flex align-items-baseline"><div class="h1 mb-0 me-2">${data.runningMachines}</div><div class="ms-auto"><span>เครื่อง</span></div></div></div></div></div>
+            `;
+        };
+
+        const renderProductionTab = (data) => {
+            const container = document.getElementById('tabs-production');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted">ไม่พบข้อมูลการผลิตในช่วงเวลานี้</p>'; return;
+            }
+            let tableHtml = '<div class="table-responsive"><table class="table table-vcenter card-table"><thead><tr><th>MO Number</th><th>Item</th><th>Status</th><th class="text-end">เป้าหมาย</th><th class="text-end">ผลิตได้</th><th class="text-end">ของเสีย</th><th>Progress</th></tr></thead><tbody>';
+            data.forEach(mo => {
+                const produced = parseInt(mo.produced_qty || 0);
+                const target = parseInt(mo.quantity_to_produce);
+                const progress = target > 0 ? (produced / target * 100).toFixed(0) : 0;
+                tableHtml += `
+                    <tr>
+                        <td>${mo.mo_number}</td>
+                        <td class="text-muted">${mo.item_name}</td>
+                        <td><span class="badge bg-secondary">${mo.status}</span></td>
+                        <td class="text-end">${target.toLocaleString()}</td>
+                        <td class="text-end">${produced.toLocaleString()}</td>
+                        <td class="text-end text-danger">${parseInt(mo.scrap_qty || 0).toLocaleString()}</td>
+                        <td><div class="progress"><div class="progress-bar" style="width: ${progress}%" role="progressbar"><span class="visually-hidden">${progress}% Complete</span></div></div></td>
+                    </tr>`;
+            });
+            tableHtml += '</tbody></table></div>';
+            container.innerHTML = tableHtml;
+        };
+
+        const renderMachinesTab = (data) => {
+            const container = document.getElementById('tabs-machines');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted">ไม่พบข้อมูลเครื่องจักร</p>'; return;
+            }
+            let tableHtml = '<div class="table-responsive"><table class="table table-vcenter card-table"><thead><tr><th>รหัสเครื่องจักร</th><th>สถานะ</th><th>ใบสั่งผลิตปัจจุบัน</th><th class="text-end">Progress (ชิ้น)</th></tr></thead><tbody>';
+            data.forEach(m => {
+                const produced = parseInt(m.total_produced || 0);
+                const target = parseInt(m.quantity_to_produce || 0);
+                tableHtml += `
+                     <tr>
+                        <td>${m.machine_code}</td>
+                        <td><span class="badge bg-success">${m.machine_status}</span></td>
+                        <td>${m.mo_number || '-'}</td>
+                        <td class="text-end">${produced.toLocaleString()} / ${target > 0 ? target.toLocaleString() : '-'}</td>
+                    </tr>`;
+            });
+            tableHtml += '</tbody></table></div>';
+            container.innerHTML = tableHtml;
+        }
+
+        // --- ฟังก์ชัน Fetch Data ---
+        const fetchData = async (period) => {
+            try {
+                const responses = await Promise.all([
+                    fetch(`/api/dashboard/main-data?period=${period}`),
+                    fetch(`/api/dashboard/production-data?period=${period}`),
+                    fetch(`/api/dashboard/machines-overview`)
+                ]);
+
+                // Check and process KPI data
+                if (responses[0].ok) {
+                    const kpiResponse = await responses[0].json();
+                    if (kpiResponse.success) renderKpiCards(kpiResponse.data);
+                } else { console.error("Failed to load main-data"); }
+
+                // Check and process Production data
+                if (responses[1].ok) {
+                    const prodResponse = await responses[1].json();
+                    if (prodResponse.success) renderProductionTab(prodResponse.data);
+                } else { console.error("Failed to load production-data"); }
+
+                // Check and process Machine data
+                if (responses[2].ok) {
+                    const machineResponse = await responses[2].json();
+                    if (machineResponse.success) renderMachinesTab(machineResponse.data);
+                } else { console.error("Failed to load machines-overview"); }
+
+            } catch (err) {
+                console.error("Fatal Error: Failed to load dashboard data:", err);
+                const contentArea = document.getElementById('dashboard-tabs-content');
+                if (contentArea) contentArea.innerHTML = `<div class="alert alert-danger"><h3>เกิดข้อผิดพลาด</h3><p>ไม่สามารถโหลดข้อมูลได้: ${err.message}</p></div>`;
+            }
+        };
+
+        // --- Event Listeners ---
+        document.getElementById('period-filter').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
+                currentPeriod = e.target.dataset.period;
+                document.querySelectorAll('#period-filter .btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                fetchData(currentPeriod);
+            }
+        });
+
+        // --- Initial Load & Interval ---
+        fetchData(currentPeriod);
+        setInterval(() => fetchData(currentPeriod), 30000); // อัปเดตทุก 30 วินาที
+    });
+</script>
+</body>
+
+</html>

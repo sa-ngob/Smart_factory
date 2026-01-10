@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>จัดการสต็อก (Inventory) - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-fluid">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <h2 class="page-title">จัดการสต็อก (Inventory Summary)</h2>
+                </div>
+            </div>
+            <div class="page-body p-md-4">
+                <div class="container-fluid">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>รหัสสินค้า</th>
+                                        <th>ชื่อสินค้า</th>
+                                        <th>ประเภท</th>
+                                        <th class="text-end">จำนวนคงคลัง</th>
+                                        <th>หน่วยนับ</th>
+                                        <th>สถานะ</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-table-body">
+                                    <tr><td colspan="7" class="text-center">กำลังโหลดข้อมูล...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // เพิ่ม Active class หลังจากโหลด Sidebar แล้ว
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/inventory.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                        const parentCollapse = activeLink.closest('.collapse');
+                        if (parentCollapse) {
+                            parentCollapse.classList.add('show');
+                            const dropdownToggle = parentCollapse.previousElementSibling;
+                            if (dropdownToggle && dropdownToggle.matches('.nav-link[data-bs-toggle="collapse"]')) {
+                                dropdownToggle.classList.remove('collapsed');
+                                dropdownToggle.setAttribute('aria-expanded', 'true');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            async function loadInventory() {
+                const tbody = document.getElementById('inventory-table-body');
+                try {
+                    const response = await fetchWithAuth('/api/inventory/summary');
+                    const data = await response.json();
+                    
+                    tbody.innerHTML = ''; // เคลียร์ข้อมูลเก่า
+                    if (data.data && data.data.length > 0) {
+                        data.data.forEach(item => {
+                            const typeMap = {
+                                'finished_good': 'สินค้าสำเร็จรูป',
+                                'raw_material': 'วัตถุดิบ',
+                                'semi_good': 'สินค้าระหว่างผลิต',
+                                'consumable': 'วัสดุสิ้นเปลือง'
+                            };
+
+                            const row = `
+                                <tr>
+                                    <td>${item.item_code}</td>
+                                    <td>${item.item_name}</td>
+                                    <td>${typeMap[item.item_type] || item.item_type}</td>
+                                    <td class="text-end fw-bold">${item.stock_quantity.toLocaleString()}</td>
+                                    <td>${item.uom || 'N/A'}</td>
+                                    <td><span class="badge bg-${item.status === 'active' ? 'success' : 'secondary'}-lt">${item.status}</span></td>
+                                    <td>
+                                        <a href="/inventory-history.html?item_code=${item.item_code}" class="btn btn-sm">ดูประวัติ</a>
+                                    </td>
+                                </tr>`;
+                            tbody.insertAdjacentHTML('beforeend', row);
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่พบข้อมูลสินค้าในสต็อก</td></tr>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching inventory summary:', error);
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">เกิดข้อผิดพลาดในการดึงข้อมูล</td></tr>';
+                }
+            }
+            
+            // --- เรียกใช้งานฟังก์ชันทั้งหมด ---
+            loadSidebar();
+            loadUserInfo();
+            loadInventory();
+        });
+    </script>
+</body>
+</html>

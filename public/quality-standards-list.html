@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <title>รายการมาตรฐาน QC</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-fluid">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">รายการมาตรฐานการตรวจสอบคุณภาพ</h2>
+                        </div>
+                        <div class="col-auto ms-auto">
+                            <a href="/quality-standards.html" class="btn btn-primary">+ สร้างมาตรฐานใหม่</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body p-md-4">
+                <div class="container-fluid">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>ชื่อมาตรฐาน</th>
+                                        <th class="d-none d-md-table-cell">รหัสสินค้า</th>
+                                        <th>ชื่อสินค้า</th>
+                                        <th class="d-none d-lg-table-cell">เวอร์ชัน</th>
+                                        <th class="d-none d-lg-table-cell">วันที่สร้าง</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="standards-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            /**
+             * โหลด Sidebar และจัดการเมนู active
+             */
+            async function loadSidebar() {
+                try {
+                    // 1. ใช้ฟังก์ชันจาก auth-client.js เพื่อโหลด sidebar แบบมีการยืนยันตัวตน
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // 2. เมื่อโหลด Sidebar เสร็จแล้ว จึงทำการค้นหาและเพิ่ม class 'active' ให้กับเมนูปัจจุบัน
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/quality-standards-list.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+
+                        // หากเมนูนี้เป็นเมนูย่อย (Sub-menu) ให้เปิด Dropdown หลักด้วย
+                        const parentCollapse = activeLink.closest('.collapse');
+                        if (parentCollapse) {
+                            parentCollapse.classList.add('show'); // ทำให้ sub-menu แสดงผล
+                            const dropdownToggle = parentCollapse.previousElementSibling;
+                            if (dropdownToggle && dropdownToggle.matches('.nav-link[data-bs-toggle="collapse"]')) {
+                                dropdownToggle.classList.remove('collapsed');
+                                dropdownToggle.setAttribute('aria-expanded', 'true');
+                            }
+                        }
+                    }
+
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            /**
+             * โหลดข้อมูลผู้ใช้งาน (ถ้ามีใน sidebar อยู่แล้ว อาจไม่จำเป็น)
+             */
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    // หากคุณมี element สำหรับแสดงชื่อผู้ใช้ ก็สามารถใส่ตรงนี้ได้
+                    // if (data.success && data.displayName) {
+                    //     document.getElementById('display-username').textContent = data.displayName;
+                    // }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            /**
+             * โหลดรายการมาตรฐาน QC
+             */
+            async function loadStandards() {
+                const tableBody = document.getElementById('standards-table-body');
+                try {
+                    const response = await fetchWithAuth('/api/quality/standards'); // ใช้ fetchWithAuth เพื่อความปลอดภัย
+                    const standards = await response.json();
+
+                    if (standards.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่พบข้อมูลมาตรฐาน</td></tr>';
+                        return;
+                    }
+
+                    tableBody.innerHTML = ''; // เคลียร์ข้อมูลเก่า
+                    standards.forEach(std => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                        <td>${std.id}</td>
+                        <td>${std.standard_name}</td>
+                        <td>${std.item_code}</td>
+                        <td>${std.item_name}</td>
+                        <td>${std.version}</td>
+                        <td>${new Date(std.created_at).toLocaleDateString('th-TH')}</td>
+                        <td>
+                            <a href="/quality-standards.html?id=${std.id}" class="btn btn-sm">ดู/แก้ไข</a>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="printStandard(${std.id})">พิมพ์</button>
+                        </td>`;
+                        tableBody.appendChild(row);
+                    });
+                } catch (error) {
+                    console.error('Failed to load standards:', error);
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">ไม่สามารถโหลดข้อมูลได้</td></tr>';
+                }
+            }
+
+            // ฟังก์ชันสำหรับปุ่มพิมพ์ (ยังไม่สร้างการทำงาน)
+            window.printStandard = (id) => {
+                alert(`ฟังก์ชันพิมพ์สำหรับ Standard ID: ${id} ยังไม่ถูกสร้าง`);
+            }
+
+            // --- เรียกใช้งานฟังก์ชันทั้งหมด ---
+            loadSidebar();
+            loadUserInfo();
+            loadStandards();
+        });
+    </script>
+
+</body>
+
+</html>

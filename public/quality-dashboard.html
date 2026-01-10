@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>แดชบอร์ดคุณภาพ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-fluid">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <h2 class="page-title">แดชบอร์ดภาพรวมคุณภาพ</h2>
+                </div>
+            </div>
+            <div class="page-body p-md-4">
+                <div class="container-fluid">
+                    <!-- Filter Section -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h3 class="card-title">ค้นหาและกรองข้อมูล (Search Filters)</h3>
+                            <div class="row g-2">
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label">วันที่ตรวจสอบ</label>
+                                    <input type="date" class="form-control" id="filter-date">
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label">MO Number</label>
+                                    <input type="text" class="form-control" id="filter-mo" list="mo-options"
+                                        placeholder="ระบุ MO...">
+                                    <datalist id="mo-options"></datalist>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label">เครื่องจักร</label>
+                                    <select class="form-select" id="filter-machine">
+                                        <option value="">ทั้งหมด</option>
+                                        <!-- Options loaded via API -->
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label">ผู้ตรวจสอบ</label>
+                                    <select class="form-select" id="filter-inspector">
+                                        <option value="">ทั้งหมด</option>
+                                        <!-- Options loaded via API -->
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label">ขั้นตอน</label>
+                                    <select class="form-select" id="filter-stage">
+                                        <option value="">ทั้งหมด</option>
+                                        <option value="First Lot">First Lot</option>
+                                        <option value="In-Process">In-Process</option>
+                                        <option value="Outgoing">Outgoing</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-2 align-self-end">
+                                    <button class="btn btn-primary w-100" id="btn-search">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                            viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                            <circle cx="10" cy="10" r="7" />
+                                            <line x1="21" y1="21" x2="15" y2="15" />
+                                        </svg>
+                                        ค้นหา
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row row-deck row-cards">
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="subheader">จำนวนที่ตรวจวันนี้</div>
+                                    <div class="h1 mb-3" id="kpi-total-inspections">...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="subheader">คำสั่งผลิตที่ตรวจ</div>
+                                    <div class="h1 mb-3" id="kpi-total-po">...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="subheader">ผ่าน (Pass)</div>
+                                    <div class="h1 mb-3 text-success" id="kpi-total-pass">...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="subheader">ไม่ผ่าน (Fail)</div>
+                                    <div class="h1 mb-3 text-danger" id="kpi-total-fail">...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row row-deck row-cards mt-4">
+                        <div class="col-lg-7">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h3 class="card-title">5 อันดับปัญหาที่พบบ่อย (30 วันย้อนหลัง)</h3>
+                                    <div id="chart-top-defects" style="min-height: 250px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h3 class="card-title">สัดส่วน Pass vs Fail (วันนี้)</h3>
+                                    <div id="chart-pass-fail-ratio" style="min-height: 250px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // เพิ่ม Active class หลังจากโหลด Sidebar แล้ว
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/quality-dashboard.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                        const parentCollapse = activeLink.closest('.collapse');
+                        if (parentCollapse) {
+                            parentCollapse.classList.add('show');
+                            const dropdownToggle = parentCollapse.previousElementSibling;
+                            if (dropdownToggle && dropdownToggle.matches('.nav-link[data-bs-toggle="collapse"]')) {
+                                dropdownToggle.classList.remove('collapsed');
+                                dropdownToggle.setAttribute('aria-expanded', 'true');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadFilterOptions() {
+                try {
+                    const response = await fetchWithAuth('/api/quality/filter-options');
+                    if (!response.ok) return;
+                    const data = await response.json();
+
+                    // Populate Machines
+                    const machineSelect = document.getElementById('filter-machine');
+                    data.machines.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.machine_name; // Filter logic uses ILIKE name
+                        opt.textContent = `${m.machine_name} (${m.machine_code || '-'})`;
+                        machineSelect.appendChild(opt);
+                    });
+
+                    // Populate Inspectors
+                    const inspectorSelect = document.getElementById('filter-inspector');
+                    data.inspectors.forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.username || u.display_name; // Filter logic checks both
+                        opt.textContent = u.display_name || u.username;
+                        inspectorSelect.appendChild(opt);
+                    });
+
+                    // Populate MO Datalist
+                    const moList = document.getElementById('mo-options');
+                    data.mos.forEach(mo => {
+                        const opt = document.createElement('option');
+                        opt.value = mo.mo_number;
+                        moList.appendChild(opt);
+                    });
+
+                } catch (error) {
+                    console.error("Failed to load filter options", error);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            function initializeCharts() {
+                const passFailChartEl = document.getElementById('chart-pass-fail-ratio');
+                const topDefectsChartEl = document.getElementById('chart-top-defects');
+
+                const passFailChart = new ApexCharts(passFailChartEl, { chart: { type: 'donut', height: 250 }, series: [], labels: [], colors: ['#2fb344', '#d63939'], legend: { position: 'bottom' } });
+                passFailChart.render();
+
+                const topDefectsChart = new ApexCharts(topDefectsChartEl, { chart: { type: 'bar', height: 250 }, series: [], xaxis: { categories: [] }, plotOptions: { bar: { horizontal: true } }, colors: ['#d63939'] });
+                topDefectsChart.render();
+
+                return { passFailChart, topDefectsChart };
+            }
+
+            async function loadDashboardData(charts) {
+                try {
+                    // Gather filter values
+                    const date = document.getElementById('filter-date').value;
+                    const mo = document.getElementById('filter-mo').value;
+                    const machine = document.getElementById('filter-machine').value;
+                    const inspector = document.getElementById('filter-inspector').value;
+                    const stage = document.getElementById('filter-stage').value;
+
+                    const params = new URLSearchParams();
+                    if (date) params.append('date', date);
+                    if (mo) params.append('mo', mo);
+                    if (machine) params.append('machine', machine);
+                    if (inspector) params.append('inspector', inspector);
+                    if (stage) params.append('stage', stage);
+
+                    const response = await fetchWithAuth(`/api/quality/dashboard-data?${params.toString()}`);
+                    if (!response.ok) throw new Error('Could not fetch dashboard data');
+                    const data = await response.json();
+
+                    document.getElementById('kpi-total-inspections').textContent = data.kpi.total;
+                    document.getElementById('kpi-total-po').textContent = data.kpi.po;
+                    document.getElementById('kpi-total-pass').textContent = data.kpi.pass;
+                    document.getElementById('kpi-total-fail').textContent = data.kpi.fail;
+
+                    charts.passFailChart.updateSeries([Number(data.kpi.pass) || 0, Number(data.kpi.fail) || 0]);
+
+                    if (data.top_defects.length > 0) {
+                        charts.topDefectsChart.updateSeries([{ name: 'จำนวนครั้งที่พบ', data: data.top_defects.map(d => d.count) }]);
+                        charts.topDefectsChart.updateOptions({ xaxis: { categories: data.top_defects.map(d => d.problem) } });
+                    } else {
+                        charts.topDefectsChart.updateSeries([{ name: 'จำนวนครั้งที่พบ', data: [] }]);
+                        charts.topDefectsChart.updateOptions({ xaxis: { categories: [] } });
+                    }
+                } catch (error) {
+                    console.error("Dashboard Load Error:", error);
+                    document.getElementById('kpi-total-inspections').textContent = '-';
+                }
+            }
+
+            // Initialize Default Date to Today
+            document.getElementById('filter-date').valueAsDate = new Date();
+
+            // Bind Search Button
+            document.getElementById('btn-search').addEventListener('click', () => loadDashboardData(charts));
+
+            // --- เรียกใช้งานฟังก์ชัน ---
+            loadSidebar();
+            loadUserInfo();
+            loadFilterOptions(); // Load Dropdowns
+            const charts = initializeCharts();
+            loadDashboardData(charts);
+        });
+    </script>
+</body>
+
+</html>

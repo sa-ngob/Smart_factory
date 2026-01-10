@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>รายการใบสั่งขาย - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .text-truncate-container {
+            max-width: 250px; /* ปรับความกว้างสูงสุดของคอลัมน์รายการสินค้า */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="page">
+      <!-- Sidebar -->
+          <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+    </aside>
+        <!-- สมมติว่ามี Sidebar อยู่แล้ว -->
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">รายการใบสั่งขาย (Sales Orders)</h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <a href="/create-so.html" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                                สร้างใบสั่งขายใหม่
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ SO</th>
+                                        <th>ชื่อลูกค้า</th>
+                                        <th>PO ของลูกค้า</th>
+                                        <th>รายการสินค้า</th>
+                                        <th>วันที่สั่ง</th>
+                                        <th>วันที่ต้องการ</th>
+                                        <th>ยอดรวม</th>
+                                        <th>สถานะ</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="so-table-body">
+                                    <tr>
+                                        <td colspan="9" class="text-center">
+                                            <div class="spinner-border" role="status"></div>
+                                            <span class="ms-2">กำลังโหลดข้อมูล...</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+           // === เพิ่มโค้ดส่วนนี้เข้าไป ===
+        fetch('api/sidebar')
+            .then(res => res.text())
+            .then(data => {
+                document.getElementById('sidebar').innerHTML = data;
+                
+                // --- จุดสำคัญ: กำหนดให้เมนูของหน้านี้เป็น Active ---
+                // ค้นหาลิงก์ที่ตรงกับหน้านี้ (เช่น /items.html)
+                const currentLink = document.querySelector('a.nav-link[href="/items.html"]');
+                if (currentLink) {
+                    // เพิ่ม class 'active' ให้กับ li ที่เป็น parent ของลิงก์นั้น
+                    currentLink.parentElement.classList.add('active');
+                }
+            });
+        // === สิ้นสุดส่วนที่เพิ่ม ===
+            const tbody = document.getElementById('so-table-body');
+
+            fetch('/api/sales-orders')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    tbody.innerHTML = ''; // Clear loading spinner
+                    if (data.data && data.data.length > 0) {
+                        data.data.forEach(so => {
+                            const row = document.createElement('tr');
+                            
+                            // ฟังก์ชันสำหรับจัดรูปแบบวันที่
+                            const formatDate = (dateString) => {
+                                if (!dateString) return '-';
+                                const date = new Date(dateString);
+                                return date.toLocaleDateString('th-TH', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                });
+                            };
+
+                            // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
+                            const formatNumber = (num) => {
+                                if (num === null || num === undefined) return '-';
+                                return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            };
+                            
+                            // กำหนดสีของ Badge ตามสถานะ
+                            const statusBadges = {
+                                'draft': 'secondary',
+                                'confirmed': 'info',
+                                'in_production': 'primary',
+                                'completed': 'success',
+                                'cancelled': 'danger'
+                            };
+                            const badgeColor = statusBadges[so.status] || 'secondary';
+
+                            // --- FIX: Use textContent and DOM manipulation to prevent XSS ---
+                            const createCell = (text) => {
+                                const cell = document.createElement('td');
+                                cell.textContent = text;
+                                return cell;
+                            };
+
+                            row.appendChild(createCell(so.so_number || '-'));
+                            row.appendChild(createCell(so.customer_name || '-'));
+                            row.appendChild(createCell(so.customer_po_number || '-'));
+                            
+                            const itemCell = document.createElement('td');
+                            itemCell.innerHTML = `<div class="text-truncate-container" title="${so.item_names || ''}">${so.item_names || '-'}</div>`;
+                            row.appendChild(itemCell);
+
+                            row.appendChild(createCell(formatDate(so.order_date)));
+                            row.appendChild(createCell(formatDate(so.due_date)));
+
+                            const amountCell = createCell(formatNumber(so.total_amount));
+                            amountCell.className = 'text-end';
+                            row.appendChild(amountCell);
+
+                            const statusCell = document.createElement('td');
+                            statusCell.innerHTML = `<span class="badge bg-${badgeColor}">${so.status}</span>`;
+                            row.appendChild(statusCell);
+
+                            const actionCell = document.createElement('td');
+                            actionCell.innerHTML = `<div class="btn-list flex-nowrap"><a href="/sales-order-detail.html?id=${so.id}" class="btn btn-sm">ดูรายละเอียด</a><a href="/edit-so.html?id=${so.id}" class="btn btn-sm btn-outline-secondary">แก้ไข</a></div>`;
+                            row.appendChild(actionCell);
+
+                            tbody.appendChild(row);
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="9" class="text-center">ไม่พบข้อมูลใบสั่งขาย</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching sales orders:', error);
+                    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">เกิดข้อผิดพลาดในการดึงข้อมูล</td></tr>`;
+                });
+        });
+    </script>
+</body>
+</html>

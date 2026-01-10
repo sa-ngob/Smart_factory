@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>รายการใบวางบิล - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">รายการใบวางบิล (Billing Notes)</h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <a href="/create-billing-note.html" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                    viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <path d="M12 5l0 14"></path>
+                                    <path d="M5 12l14 0"></path>
+                                </svg>
+                                สร้างใบวางบิลใหม่
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table card-table table-vcenter text-nowrap datatable">
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ใบวางบิล</th>
+                                        <th>ลูกค้า</th>
+                                        <th>วันที่ออก</th>
+                                        <th>วันที่นัดรับชำระ</th>
+                                        <th class="text-end">ยอดรวม</th>
+                                        <th class="text-center">สถานะ</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="billing-notes-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // Highlight the active menu item
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/billing-notes.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function initializeBillingNotesPage() {
+                const formatDate = (dateString) => {
+                    if (!dateString) return '-';
+                    return new Date(dateString).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                };
+
+                const formatCurrency = (num) => {
+                    if (num === null || num === undefined) return '0.00';
+                    return Number(num).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+                };
+
+                const formatStatus = (status) => {
+                    const statuses = {
+                        'billed': { class: 'primary', text: 'วางบิลแล้ว' },
+                        'collected': { class: 'success', text: 'รับชำระแล้ว' },
+                        'cancelled': { class: 'secondary', text: 'ยกเลิก' }
+                    };
+                    const s = statuses[status] || { class: 'secondary', text: status };
+                    return `<span class="badge bg-${s.class}-lt">${s.text}</span>`;
+                };
+
+                const tableBody = document.getElementById('billing-notes-table-body');
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">กำลังโหลดข้อมูล...</td></tr>';
+                try {
+                    // [แก้ไข] ใช้ fetchWithAuth
+                    const response = await fetchWithAuth('/api/billing-notes');
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error);
+
+                    const notes = result.data;
+                    if (!notes || notes.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่พบข้อมูลใบวางบิล</td></tr>';
+                        return;
+                    }
+
+                    tableBody.innerHTML = notes.map(note => `
+                        <tr>
+                            <td><a href="/billing-note-detail.html?id=${note.id}" class="text-reset">${note.bn_number}</a></td>
+                            <td>${note.customer_name}</td>
+                            <td>${formatDate(note.issue_date)}</td>
+                            <td>${formatDate(note.due_date)}</td>
+                            <td class="text-end">${formatCurrency(note.total_amount)}</td>
+                            <td class="text-center">${formatStatus(note.status)}</td>
+                            <td class="text-end">
+                                <a href="/billing-note-detail.html?id=${note.id}" class="btn btn-sm">ดูรายละเอียด</a>
+                            </td>
+                        </tr>
+                    `).join('');
+                } catch (error) {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${error.message}</td></tr>`;
+                }
+            }
+
+            loadSidebar();
+            // loadUserInfo(); // ไม่มี element 'display-username' ในหน้านี้
+            initializeBillingNotesPage();
+        });
+    </script>
+</body>
+
+</html>

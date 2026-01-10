@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>เพิ่มผู้ใช้ใหม่ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl"><h2 class="page-title">เพิ่มผู้ใช้ใหม่</h2></div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="card-body">
+                            <form id="add-user-form">
+                                <div class="mb-3"><label class="form-label">ชื่อ-สกุล</label><input type="text" class="form-control" name="fullName" required></div>
+                                <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
+                                <div class="mb-3"><label class="form-label">รหัสผ่าน</label><input type="password" class="form-control" name="password" autocomplete="new-password" required></div>
+                                <div class="mb-3"><label class="form-label">Role</label>
+                                    <select class="form-select" name="role" required>
+                                        <option value="user">User</option>
+                                        <option value="qc">QC</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div class="form-footer">
+                                    <a href="/users.html" class="btn btn-link">ยกเลิก</a>
+                                    <button type="submit" class="btn btn-primary ms-auto">บันทึก</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+    <!-- ✅ เพิ่ม: แยกสคริปต์สำหรับหน้านี้โดยเฉพาะ -->
+    <script src="/js/add-user.js"></script>
+</body>
+</html>

@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>สร้าง/แก้ไข มาตรฐาน QC - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <style>
+        .drawing-container {
+            position: relative;
+            border: 1px dashed #ccc;
+            min-height: 300px;
+            cursor: crosshair;
+            background-color: #f9fafb;
+            overflow: auto;
+        }
+
+        .drawing-image {
+            max-width: 100%;
+            display: block;
+        }
+
+        .inspection-point {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border: 2px solid red;
+            border-radius: 50%;
+            color: white;
+            background-color: rgba(255, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            user-select: none;
+        }
+
+        .table-responsive {
+            max-height: 400px;
+        }
+
+        .input-minmax {
+            background-color: #f3f4f6;
+            border: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <h2 class="page-title" id="page-title">สร้างมาตรฐานการตรวจสอบคุณภาพ</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <form id="standard-form">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3"><label class="form-label">ผลิตภัณฑ์ (Finished
+                                            Good)</label><select class="form-select" id="product-select"
+                                            required></select></div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">ประเภทมาตรฐาน (เลือกได้มากกว่า 1)</label>
+                                        <div class="d-flex flex-column gap-2 mt-2">
+                                            <label class="form-check form-check-inline">
+                                                <input class="form-check-input type-checkbox" type="checkbox"
+                                                    value="First Lot">
+                                                <span class="form-check-label">First Lot</span>
+                                            </label>
+                                            <label class="form-check form-check-inline">
+                                                <input class="form-check-input type-checkbox" type="checkbox"
+                                                    value="In-Process">
+                                                <span class="form-check-label">In-Process</span>
+                                            </label>
+                                            <label class="form-check form-check-inline">
+                                                <input class="form-check-input type-checkbox" type="checkbox"
+                                                    value="Outgoing">
+                                                <span class="form-check-label">Outgoing</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="categories-container"></div>
+                        <div class="card mt-3">
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <div class="col"><select id="add-category-select" class="form-select">
+                                            <option value="ตรวจสอบรูปร่างภายนอก">ตรวจสอบรูปร่างภายนอก (Appearance)
+                                            </option>
+                                            <option value="ตรวจสอบจุดประกอบและฟังก์ชัน">ตรวจสอบจุดประกอบและฟังก์ชัน
+                                                (Assembly & Function)</option>
+                                            <option value="ตรวจสอบขนาด">ตรวจสอบขนาด (Dimension)</option>
+                                        </select></div>
+                                    <div class="col-auto"><button type="button" id="add-category-btn"
+                                            class="btn btn-outline-primary">+ เพิ่มกลุ่มการตรวจสอบ</button></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-end"><a href="/quality-standards-list.html"
+                                class="btn btn-link">ยกเลิก</a><button type="submit"
+                                class="btn btn-primary">บันทึกมาตรฐาน</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <template id="category-card-template">
+        <div class="card mb-3 category-card">
+            <div class="card-header">
+                <h3 class="card-title"></h3>
+                <div class="ms-auto"><button type="button" class="btn-close" aria-label="Close"
+                        title="ลบกลุ่มนี้"></button></div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="mb-3"><label class="form-label">อัปโหลดรูป Drawing สำหรับกลุ่มนี้</label><input
+                                type="file" class="form-control drawing-upload" accept="image/*"></div>
+                        <div class="drawing-container"><img class="drawing-image" src=""></div>
+                    </div>
+                    <div class="col-lg-6">
+                        <h4 class="mb-3">จุดตรวจสอบย่อย (คลิกบนรูปเพื่อเพิ่ม)</h4>
+                        <div class="table-responsive">
+                            <table class="table table-vcenter table-sm">
+                                <thead></thead>
+                                <tbody class="points-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // เพิ่ม Active class หลังจากโหลด Sidebar แล้ว
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/quality-standards-list.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                        const parentCollapse = activeLink.closest('.collapse');
+                        if (parentCollapse) {
+                            parentCollapse.classList.add('show');
+                            const dropdownToggle = parentCollapse.previousElementSibling;
+                            if (dropdownToggle && dropdownToggle.matches('.nav-link[data-bs-toggle="collapse"]')) {
+                                dropdownToggle.classList.remove('collapsed');
+                                dropdownToggle.setAttribute('aria-expanded', 'true');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            // --- ส่วนการทำงานเฉพาะของหน้านี้ ---
+            const form = document.getElementById('standard-form');
+            const productSelect = document.getElementById('product-select');
+            // const standardNameSelect = document.getElementById('standard-name');
+            const addCategoryBtn = document.getElementById('add-category-btn');
+            const categorySelect = document.getElementById('add-category-select');
+            const categoriesContainer = document.getElementById('categories-container');
+            const categoryCardTemplate = document.getElementById('category-card-template');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const standardId = urlParams.get('id');
+            const isEditMode = standardId !== null;
+
+            async function fetchProducts() {
+                try {
+                    const response = await fetchWithAuth('/api/items?item_type=finished_good');
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const result = await response.json();
+                    const products = Array.isArray(result) ? result : result.data || [];
+
+                    productSelect.innerHTML = '<option value="">-- เลือกสินค้า --</option>';
+                    if (products.length > 0) {
+                        products.forEach(p => {
+                            productSelect.innerHTML += `<option value="${p.id}">${p.item_code} - ${p.item_name}</option>`;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch products:', error);
+                    alert('ไม่สามารถโหลดรายการสินค้าได้ กรุณาตรวจสอบ Console');
+                }
+            }
+
+            function addCategoryCard(categoryData = {}) {
+                const cardClone = categoryCardTemplate.content.cloneNode(true);
+                const cardElement = cardClone.querySelector('.category-card');
+                const categoryName = categoryData.category_name || categorySelect.value;
+                cardElement.querySelector('.card-title').textContent = categoryName;
+
+                const drawingContainer = cardElement.querySelector('.drawing-container');
+                const drawingImage = cardElement.querySelector('.drawing-image');
+                const fileInput = cardElement.querySelector('.drawing-upload');
+                const tableHead = cardElement.querySelector('thead');
+                const pointsTableBody = cardElement.querySelector('.points-table-body');
+
+                let points = categoryData.points || [];
+
+                if (isEditMode && categoryData.drawing_image_path) {
+                    drawingImage.src = `/${categoryData.drawing_image_path}`;
+                    cardElement.dataset.existingImagePath = categoryData.drawing_image_path;
+                } else {
+                    fileInput.required = true;
+                }
+
+                if (categoryName === 'ตรวจสอบขนาด') {
+                    tableHead.innerHTML = `<tr><th>#</th><th>ชื่อจุดตรวจ</th><th>ค่ามาตรฐาน</th><th>ค่าเผื่อ +/-</th><th>Min</th><th>Max</th><th>เครื่องมือ</th><th></th></tr>`;
+                } else {
+                    tableHead.innerHTML = `<tr><th>#</th><th>ชื่อ</th><th>วิธีตรวจ</th><th>เกณฑ์</th><th>หน่วย</th><th></th></tr>`;
+                }
+
+                const renderAll = () => {
+                    drawingContainer.querySelectorAll('.inspection-point').forEach(p => p.remove());
+                    pointsTableBody.innerHTML = '';
+
+                    points.forEach((point, index) => {
+                        const rect = drawingImage.getBoundingClientRect();
+                        if (drawingImage.naturalWidth > 0) {
+                            const pointDiv = document.createElement('div');
+                            pointDiv.className = 'inspection-point';
+                            pointDiv.textContent = point.point_number;
+                            const scaleX = rect.width / drawingImage.naturalWidth;
+                            const scaleY = rect.height / drawingImage.naturalHeight;
+                            pointDiv.style.left = `${point.pos_x * scaleX}px`;
+                            pointDiv.style.top = `${point.pos_y * scaleY}px`;
+                            drawingContainer.appendChild(pointDiv);
+                        }
+
+                        const row = document.createElement('tr');
+                        row.dataset.pointNumber = point.point_number;
+                        row.dataset.posX = point.pos_x;
+                        row.dataset.posY = point.pos_y;
+
+                        if (categoryName === 'ตรวจสอบขนาด') {
+                            const std = parseFloat(point.standard_value);
+                            const tol = parseFloat(point.tolerance);
+                            const min = isNaN(std) || isNaN(tol) ? '' : (std - tol).toFixed(3);
+                            const max = isNaN(std) || isNaN(tol) ? '' : (std + tol).toFixed(3);
+                            row.innerHTML = `
+                            <td><span class="badge bg-red-lt">${point.point_number}</span></td>
+                            <td><input type="text" class="form-control form-control-sm" style="min-width: 120px;" data-field="name" value="${point.name || ''}"></td>
+                            <td><input type="number" step="any" class="form-control form-control-sm" style="min-width: 80px;" data-field="standard_value" value="${point.standard_value || ''}"></td>
+                            <td><input type="number" step="any" class="form-control form-control-sm" style="min-width: 80px;" data-field="tolerance" value="${point.tolerance || ''}"></td>
+                            <td><input type="text" class="form-control form-control-sm input-minmax" style="min-width: 80px;" data-field="min" value="${min}" readonly></td>
+                            <td><input type="text" class="form-control form-control-sm input-minmax" style="min-width: 80px;" data-field="max" value="${max}" readonly></td>
+                            <td><input type="text" class="form-control form-control-sm" style="min-width: 100px;" data-field="tool_used" value="${point.tool_used || ''}"></td>
+                            <td><button type="button" class="btn btn-sm btn-ghost-danger btn-delete-point" data-index="${index}">ลบ</button></td>`;
+                        } else {
+                            row.innerHTML = `
+                            <td><span class="badge bg-red-lt">${point.point_number}</span></td>
+                            <td><input type="text" class="form-control form-control-sm" style="min-width: 120px;" data-field="name" value="${point.name || ''}"></td>
+                            <td><input type="text" class="form-control form-control-sm" style="min-width: 100px;" data-field="method" value="${point.method || ''}"></td>
+                            <td><input type="text" class="form-control form-control-sm" style="min-width: 100px;" data-field="standard_value" value="${point.standard_value || ''}"></td>
+                            <td><input type="text" class="form-control form-control-sm" data-field="unit" value="${point.unit || ''}" style="width: 60px;"></td>
+                            <td><button type="button" class="btn btn-sm btn-ghost-danger btn-delete-point" data-index="${index}">ลบ</button></td>`;
+                        }
+                        pointsTableBody.appendChild(row);
+                    });
+                }
+
+                pointsTableBody.addEventListener('input', (e) => {
+                    if (categoryName !== 'ตรวจสอบขนาด') return;
+                    const target = e.target;
+                    if (target.dataset.field === 'standard_value' || target.dataset.field === 'tolerance') {
+                        const row = target.closest('tr');
+                        const std = parseFloat(row.querySelector('[data-field="standard_value"]').value);
+                        const tol = parseFloat(row.querySelector('[data-field="tolerance"]').value);
+                        if (!isNaN(std) && !isNaN(tol)) {
+                            row.querySelector('[data-field="min"]').value = (std - tol).toFixed(3);
+                            row.querySelector('[data-field="max"]').value = (std + tol).toFixed(3);
+                        } else {
+                            row.querySelector('[data-field="min"]').value = '';
+                            row.querySelector('[data-field="max"]').value = '';
+                        }
+                    }
+                });
+
+                drawingImage.onload = renderAll;
+                fileInput.addEventListener('change', (e) => { if (e.target.files[0]) drawingImage.src = URL.createObjectURL(e.target.files[0]); });
+
+                drawingContainer.addEventListener('click', (e) => {
+                    if (!drawingImage.src || e.target.classList.contains('inspection-point')) return;
+                    const rect = drawingImage.getBoundingClientRect();
+                    if (rect.width === 0) return;
+                    const scaleX = drawingImage.naturalWidth / rect.width;
+                    const scaleY = drawingImage.naturalHeight / rect.height;
+                    const posX = Math.round((e.clientX - rect.left) * scaleX);
+                    const posY = Math.round((e.clientY - rect.top) * scaleY);
+                    points.push({ point_number: points.length + 1, pos_x: posX, pos_y: posY });
+                    renderAll();
+                });
+
+                pointsTableBody.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('btn-delete-point')) {
+                        const indexToRemove = parseInt(e.target.dataset.index);
+                        points.splice(indexToRemove, 1);
+                        points.forEach((p, i) => p.point_number = i + 1);
+                        renderAll();
+                    }
+                });
+
+                cardElement.querySelector('.btn-close').addEventListener('click', () => cardElement.remove());
+                categoriesContainer.appendChild(cardElement);
+
+                if (drawingImage.complete && drawingImage.src) drawingImage.onload();
+            }
+
+            async function loadStandardForEdit(id) {
+                try {
+                    await fetchProducts(); // โหลดข้อมูล Product ก่อนเสมอ
+                    const res = await fetchWithAuth(`/api/quality/standards/${id}`);
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error);
+
+                    document.getElementById('page-title').textContent = `แก้ไขมาตรฐาน QC #${data.id}`;
+                    productSelect.value = data.product_id;
+                    // Set checkboxes
+                    const types = (data.standard_name || '').split(', ');
+                    document.querySelectorAll('.type-checkbox').forEach(cb => {
+                        cb.checked = types.includes(cb.value);
+                    });
+
+                    data.categories.forEach(cat => addCategoryCard(cat));
+                } catch (error) {
+                    console.error("Failed to load standard for editing:", error);
+                    alert("ไม่สามารถโหลดข้อมูลมาตรฐานได้");
+                    window.location.href = '/quality-standards-list.html';
+                }
+            }
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const formData = new FormData();
+                formData.append('product_id', productSelect.value);
+                const selectedTypes = Array.from(document.querySelectorAll('.type-checkbox:checked')).map(cb => cb.value);
+                if (selectedTypes.length === 0) { alert('กรุณาเลือกประเภทมาตรฐานอย่างน้อย 1 อย่าง'); return; }
+                formData.append('standard_name', selectedTypes.join(', '));
+                const categoryCards = categoriesContainer.querySelectorAll('.category-card');
+                if (categoryCards.length === 0) { alert('กรุณาเพิ่มกลุ่มการตรวจสอบอย่างน้อย 1 กลุ่ม'); return; }
+
+                const categoriesData = [];
+                let fileIndex = 0;
+                for (const card of categoryCards) {
+                    const cardTitle = card.querySelector('.card-title').textContent;
+                    const fileInput = card.querySelector('.drawing-upload');
+                    const points = [];
+                    const pointRows = card.querySelectorAll('.points-table-body tr');
+
+                    pointRows.forEach(row => {
+                        const pointData = {
+                            point_number: row.dataset.pointNumber, pos_x: row.dataset.posX, pos_y: row.dataset.posY,
+                            name: row.querySelector('input[data-field="name"]').value,
+                            method: row.querySelector('input[data-field="method"]')?.value,
+                            standard_value: row.querySelector('input[data-field="standard_value"]')?.value || null,
+                            unit: row.querySelector('input[data-field="unit"]')?.value,
+                        };
+                        if (cardTitle === 'ตรวจสอบขนาด') {
+                            const std = parseFloat(row.querySelector('input[data-field="standard_value"]').value) || 0;
+                            const tol = parseFloat(row.querySelector('input[data-field="tolerance"]').value) || 0;
+                            pointData.tolerance = tol;
+                            pointData.tool_used = row.querySelector('input[data-field="tool_used"]').value;
+                            pointData.lower_limit = std - tol;
+                            pointData.upper_limit = std + tol;
+                        }
+                        points.push(pointData);
+                    });
+
+                    const categoryInfo = { category_name: cardTitle, points: points };
+                    if (isEditMode && !fileInput.files[0] && card.dataset.existingImagePath) {
+                        categoryInfo.existing_image_path = card.dataset.existingImagePath;
+                    } else if (fileInput.files[0]) {
+                        formData.append(`drawing_cat_${fileIndex++}`, fileInput.files[0]);
+                    } else {
+                        alert(`กรุณาอัปโหลดรูปสำหรับกลุ่ม "${categoryInfo.category_name}"`); return;
+                    }
+                    categoriesData.push(categoryInfo);
+                };
+                formData.append('categories_data', JSON.stringify(categoriesData));
+
+                try {
+                    const url = isEditMode ? `/api/quality/standards/${standardId}` : '/api/quality/standards';
+                    const method = isEditMode ? 'PUT' : 'POST';
+                    const response = await fetchWithAuth(url, { method, body: formData });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Server error');
+                    alert(isEditMode ? 'อัปเดตมาตรฐานสำเร็จ!' : 'บันทึกมาตรฐานสำเร็จ!');
+                    window.location.href = '/quality-standards-list.html';
+                } catch (error) {
+                    console.error('Submit Error:', error);
+                    alert(`เกิดข้อผิดพลาด: ${error.message}`);
+                }
+            });
+
+            async function initializePage() {
+                loadSidebar(); // โหลด Sidebar และ User Info พร้อมกัน
+                loadUserInfo();
+
+                if (isEditMode) {
+                    await loadStandardForEdit(standardId);
+                } else {
+                    await fetchProducts();
+                }
+            }
+
+            addCategoryBtn.addEventListener('click', () => { addCategoryCard(); });
+
+            initializePage(); // เริ่มต้นการทำงานของหน้า
+        });
+    </script>
+</body>
+
+</html>

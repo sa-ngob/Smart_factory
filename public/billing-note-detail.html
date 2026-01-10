@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>รายละเอียดใบวางบิล - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        .page-body {
+            display: flex;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+
+        .fixed-actions {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .a4-page {
+            background: white;
+            width: 21cm;
+            min-height: 29.7cm;
+            padding: 1.5cm;
+            margin: 0 auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            color: #333;
+            font-size: 10pt;
+            position: relative;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .company-details {
+            text-align: right;
+        }
+
+        .document-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+        }
+
+        .customer-box {
+            padding: 0.75rem;
+            width: 55%;
+            min-height: 100px;
+        }
+
+        .remark-box {
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            min-height: 50px;
+        }
+
+        .document-info {
+            width: 40%;
+        }
+
+        .document-info p {
+            margin-bottom: 0.25rem;
+        }
+
+        .document-info strong {
+            display: inline-block;
+            min-width: 120px;
+        }
+
+        .document-title {
+            text-align: center;
+            margin: 1rem 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .items-table th,
+        .items-table td {
+            border: 1px solid #000;
+            padding: 4px 6px;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .items-table thead {
+            background-color: #f8f9fa;
+        }
+
+        .items-table th {
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .items-table tr {
+            min-height: 30px;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .document-footer {
+            margin-top: auto;
+            padding-top: 1rem;
+        }
+
+        .summary-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+            padding: 0.5rem 0;
+        }
+
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .signature-box {
+            width: 48%;
+        }
+
+        .signature-line {
+            border-bottom: 1px dotted #333;
+            margin: 2.5rem 0 0.5rem 0;
+        }
+
+        .page-number {
+            display: none;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 0.5cm;
+            }
+
+            body {
+                background-color: white !important;
+                margin: 0;
+            }
+
+            .fixed-actions {
+                display: none !important;
+            }
+
+            .page-body {
+                padding: 0;
+                margin: 0;
+            }
+
+            .a4-page {
+                box-shadow: none !important;
+                margin: 0;
+                width: 100%;
+                min-height: initial;
+                padding: 0;
+                border: none !important;
+                page-break-after: always;
+            }
+
+            .a4-page:last-child {
+                page-break-after: auto;
+            }
+
+            .items-table thead {
+                display: table-header-group;
+                background-color: #f8f9fa !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .items-table tbody tr {
+                page-break-inside: avoid;
+            }
+
+            body {
+                counter-reset: page;
+            }
+
+            .page-number {
+                display: block;
+                position: absolute;
+                bottom: 10px;
+                right: 20px;
+                font-size: 9pt;
+            }
+
+            .page-number::after {
+                counter-increment: page;
+                content: "หน้า " counter(page);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="fixed-actions d-print-none">
+        <a href="/billing-notes.html" class="btn btn-outline-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrow-left" width="24"
+                height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M5 12l14 0" />
+                <path d="M5 12l6 6" />
+                <path d="M5 12l6 -6" />
+            </svg>
+            กลับ
+        </a>
+        <button type="button" class="btn btn-primary" onclick="window.print();">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-printer" width="24" height="24"
+                viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" />
+                <path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" />
+                <path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" />
+            </svg>
+            พิมพ์
+        </button>
+    </div>
+
+    <div class="page-body" id="page-content-wrapper">
+        <div class="container text-center mt-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>กำลังโหลดข้อมูล...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bnId = urlParams.get('id');
+
+            if (!bnId) {
+                document.getElementById('page-content-wrapper').innerHTML = '<div class="container text-center mt-5"><h1>ไม่พบ ID ใบวางบิล</h1></div>';
+                return;
+            }
+
+            const formatDate = (dateString) => {
+                if (!dateString) return '-';
+                return new Date(dateString).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            };
+            const formatCurrency = (num) => {
+                if (num === null || num === undefined) return '0.00';
+                return Number(num).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            };
+
+            function bahttext(number) {
+                if (number === null || isNaN(number) || number === 0) return "ศูนย์บาทถ้วน";
+                const thaiNumbers = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
+                const thaiUnits = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"];
+                let [baht, satang] = Number(number).toFixed(2).split('.').map(part => parseInt(part));
+                function convert(numStr) {
+                    let output = ""; const len = numStr.length;
+                    for (let i = 0; i < len; i++) {
+                        const digit = parseInt(numStr[i]); const unit = thaiUnits[len - i - 1];
+                        if (digit === 0) continue;
+                        let digitText = thaiNumbers[digit];
+                        if (unit === 'สิบ' && digit === 2) digitText = "ยี่";
+                        else if (unit === 'สิบ' && digit === 1) digitText = "";
+                        else if (unit === '' && digit === 1 && len > 1 && parseInt(numStr[len - 2]) !== 0) digitText = "เอ็ด";
+                        output += digitText + unit;
+                    }
+                    return output;
+                }
+                let bahtText = "";
+                if (baht.toString().length > 7) {
+                    const millionPart = baht.toString().substring(0, baht.toString().length - 6);
+                    const remainingPart = baht.toString().substring(baht.toString().length - 6);
+                    bahtText = convert(millionPart) + "ล้าน" + convert(remainingPart);
+                } else { bahtText = convert(baht.toString()); }
+                bahtText = bahtText.replace(/^หนึ่งล้าน/, "เอ็ดล้าน");
+                let satangText = satang > 0 ? convert(satang.toString()) + "สตางค์" : "ถ้วน";
+                return bahtText + "บาท" + satangText;
+            }
+
+            function createPageHTML(details, pageInvoices) {
+                const headerHTML = `
+                    <div class="document-header">
+                        <div><a href="/"><img src="/uploads/items/espa-logo.png" alt="ES-PA Logo" style="max-width: 100px; height: auto;"></a></div>
+                        <div class="company-details">
+                            <p style="font-size: 1.1rem; font-weight: bold; margin: 0;">บริษัท เอส ป้า เอ็นจิเนียริ่ง จำกัด</p>
+                            99/2 หมู่ 2 ต.บ่อตาโล่ อ.วังน้อย จ.พระนครศรีอยุธยา 13170<br>
+                            Tel: 089-1804303 เลขประจำตัวผู้เสียภาษีอากร 0135555011210
+                        </div>
+                    </div>
+                    <div class="document-title">ใบวางบิล</div>
+                    <div class="document-meta">
+                        <div class="customer-box">
+                            <strong>ชื่อ/Name:</strong>
+                            <div style="padding-left: 1rem; padding-top: 0.5rem;">
+                                <strong>${details.customer_name || ''}</strong><br>
+                                ${details.customer_address || ''}<br>
+                                Tax ID: ${details.customer_tax_id || '-'}
+                            </div>
+                        </div>
+                        <div class="document-info">
+                             <p><strong>เลขที่/No:</strong> <span>${details.bn_number}</span></p>
+                             <p><strong>วันที่ออก/Date Issue:</strong> <span>${formatDate(details.issue_date)}</span></p>
+                             <p><strong>เงื่อนไขชำระเงิน/Terms:</strong> <span>${details.payment_terms || '-'}</span></p>
+                             <div class="remark-box">
+                                <strong>Remark:</strong> ${details.remark || ''}
+                             </div>
+                        </div>
+                    </div>
+                `;
+
+                const tableHeaderHTML = `
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">ลำดับ</th><th style="width: 20%;">เลขที่ใบกำกับ</th><th style="width: 20%;">วันที่ในใบกำกับ</th>
+                            <th class="text-right" style="width: 15%;">ยอดเงินตามบิล</th><th class="text-right" style="width: 15%;">ภาษี 7%</th>
+                            <th class="text-right" style="width: 15%;">รวมยอดเงิน</th><th>หมายเหตุ</th>
+                        </tr>
+                    </thead>
+                `;
+
+                const ROWS_PER_PAGE = 14;
+                let invoicesHTML = pageInvoices.map((inv, index) => `
+                    <tr>
+                        <td class="text-center">${inv.originalIndex + 1}</td><td class="text-center">${inv.invoice_number}</td>
+                        <td class="text-center">${formatDate(inv.issue_date)}</td><td class="text-right">${formatCurrency(inv.sub_total)}</td>
+                        <td class="text-right">${formatCurrency(inv.tax_amount)}</td><td class="text-right">${formatCurrency(inv.grand_total)}</td><td></td>
+                    </tr>
+                `).join('');
+
+                const emptyRowsNeeded = ROWS_PER_PAGE - pageInvoices.length;
+                if (emptyRowsNeeded > 0) {
+                    for (let i = 0; i < emptyRowsNeeded; i++) {
+                        invoicesHTML += '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+                    }
+                }
+
+                const footerHTML = `
+                    <div class="document-footer">
+                        <div class="summary-section">
+                           <div style="width: 50%;"><strong>(Baht)บาท:</strong> <span>${bahttext(details.total_amount)}</span></div>
+                           <div style="width: 50%; text-align: right; font-weight: bold;">
+                                <div style="display: inline-block; text-align: left; margin-right: 2rem;"><p style="margin: 0;">จำนวนเงิน (THB):</p><p style="margin: 0;">Total(AMT):</p></div>
+                                <div style="display: inline-block; width: 120px; text-align: right;"><p style="margin: 0;">${formatCurrency(details.total_amount)}</p><p style="margin: 0;">${formatCurrency(details.total_amount)}</p></div>
+                                <div style="display: inline-block; width: 30px; text-align: center;"><p style="margin: 0;">THB</p><p style="margin: 0;">THB</p></div>
+                           </div>
+                        </div>
+                        <div style="border-bottom: 1px solid #000; margin-top: 0.5rem;"></div>
+                        <div style="margin-top: 0.5rem;">หมายเหตุ</div>
+                        <div class="signature-section">
+                            <div class="signature-box">
+                                <div>ในนาม บริษัท เอส ป้า เอ็นจิเนียริ่ง จำกัด</div><div>For ES PA ENGINEERING Co., Ltd.</div><div class="signature-line"></div>
+                                <p>ผู้วางบิล</p><div>วันที่: ......./......./.........</div>
+                            </div>
+                            <div class="signature-box">
+                                <div><strong>กำหนดวันรับเงิน    ...../....../.......</strong></div><p> .</p><div class="signature-line"></div>
+                                
+                                <p>ผู้รับวางบิล</p><div>วันที่: ......./......./.........</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                return `<div class="a4-page"><div class="main-content">${headerHTML}<table class="items-table">${tableHeaderHTML}<tbody>${invoicesHTML}</tbody></table>${footerHTML}</div><div class="page-number"></div></div>`;
+            }
+
+            fetch(`/api/billing-notes/${bnId}`)
+                .then(response => response.ok ? response.json() : Promise.reject('Network error'))
+                .then(result => {
+                    if (!result.success) throw new Error(result.error);
+                    const { details, invoices } = result.data;
+                    document.title = `BN ${details.bn_number} - Smart Factory`;
+
+                    const pageWrapper = document.getElementById('page-content-wrapper');
+                    pageWrapper.innerHTML = '';
+
+                    const ROWS_PER_PAGE = 14;
+                    const itemsWithIndex = invoices.map((item, index) => ({ ...item, originalIndex: index }));
+
+                    for (let i = 0; i < itemsWithIndex.length; i += ROWS_PER_PAGE) {
+                        const pageItems = itemsWithIndex.slice(i, i + ROWS_PER_PAGE);
+                        pageWrapper.innerHTML += createPageHTML(details, pageItems);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching Billing Note details:', error);
+                    document.getElementById('page-content-wrapper').innerHTML = `<div class="container text-center text-danger mt-5"><h3>เกิดข้อผิดพลาดในการโหลดข้อมูล</h3><p>${error.message || ''}</p></div>`;
+                });
+        });
+    </script>
+</body>
+
+</html>

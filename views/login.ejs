@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="th">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Sign in - Smart Factory</title>
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+  <link href="/css/industrial.css" rel="stylesheet" />
+</head>
+
+<body class=" d-flex flex-column">
+  <div class="page page-center">
+    <div class="container container-tight py-4">
+      <div class="text-center mb-4">
+        <a href="." class="navbar-brand navbar-brand-autodark"><img src="https://preview.tabler.io/static/logo.svg"
+            height="36" alt=""></a>
+      </div>
+      <div class="card card-md">
+        <div class="card-body">
+          <h2 class="h2 text-center mb-4">ลงชื่อเข้าสู่ระบบ</h2>
+          <form action="/login" method="POST" autocomplete="off">
+            <div class="mb-3">
+              <label class="form-label">อีเมล</label>
+              <input type="email" class="form-control" placeholder="your@email.com" autocomplete="off" name="email"
+                required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">
+                รหัสผ่าน
+                <span class="form-label-description">
+                  <a href="#">ลืมรหัสผ่าน</a>
+                </span>
+              </label>
+              <input type="password" class="form-control" placeholder="Your password" autocomplete="off" name="password"
+                required>
+            </div>
+            <div class="mb-2">
+              <label class="form-check">
+                <input type="checkbox" class="form-check-input" name="remember" />
+                <span class="form-check-label">จำฉันไว้ในระบบ</span>
+              </label>
+            </div>
+            <div class="form-footer">
+              <button type="submit" class="btn btn-primary w-100">ลงชื่อเข้าใช้</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="text-center text-muted mt-3">
+        ยังไม่มีบัญชี? <a href="./register.html" tabindex="-1">สร้างบัญชีที่นี่</a>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+</body>
+
+</html>

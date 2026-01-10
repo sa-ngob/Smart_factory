@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>บันทึกการรับชำระเงิน - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark"><div class="container-fluid" id="sidebar-container"></div></aside>    
+        <div class="page-wrapper">
+            <div class="page-header"><div class="container-xl"><h2 class="page-title">บันทึกการรับชำระเงิน (จากใบวางบิล)</h2></div></div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-7 mb-3">
+                                    <label class="form-label">1. เลือกลูกค้า</label>
+                                    <select class="form-select" id="select-customer"><option value="">-- กรุณาเลือกลูกค้า --</option></select>
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label class="form-label">เลขที่ใบเสร็จ (จะถูกสร้างอัตโนมัติ)</label>
+                                    <input type="text" class="form-control" id="receipt-number" readonly style="background-color: #35424a00;">
+                                </div>
+                            </div>
+                            <hr>
+                            <h4 class="mb-3">2. เลือกใบวางบิลที่ต้องการชำระ</h4>
+                            <div class="table-responsive" style="max-height: 300px;">
+                                <table class="table table-sm table-hover">
+                                    <thead><tr>
+                                        <th style="width: 1%;">เลือก</th>
+                                        <th>เลขที่ใบวางบิล</th><th>วันที่ออก</th>
+                                        <th class="text-end">ยอดวางบิล</th>
+                                    </tr></thead>
+                                    <tbody id="billing-notes-table">
+                                        <tr><td colspan="4" class="text-center text-muted">กรุณาเลือกลูกค้า</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                             <hr>
+                             <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">วันที่ชำระ</label>
+                                    <input type="date" class="form-control" id="payment-date">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">ช่องทางการชำระ</label>
+                                    <select class="form-select" id="payment-method">
+                                        <option>โอนเงิน</option><option>เงินสด</option><option>เช็ค</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">ยอดชำระรวม</label>
+                                    <input type="text" class="form-control text-end" id="total-amount-paid" value="0.00" readonly style="background-color: #35424a00; font-weight: bold;">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">หมายเหตุ</label>
+                                <textarea id="notes" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="card-footer text-end">
+                            <a href="/receipts.html" class="btn">ยกเลิก</a>
+                            <button type="button" class="btn btn-primary" id="save-receipt-btn" disabled>บันทึกใบเสร็จ</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch('/api/sidebar').then(r => r.text()).then(d => { document.getElementById('sidebar-container').innerHTML = d; });
+            const formatCurrency = (num) => (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const formatDate = (dateString) => new Date(dateString).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+            async function populateCustomers() {
+                const select = document.getElementById('select-customer');
+                try {
+                    const response = await fetch('/api/entities?list_for=customer');
+                    if (!response.ok) throw new Error('Failed to fetch customers');
+                    const result = await response.json();
+                    if (result.data) {
+                        result.data.forEach(c => { 
+                            const option = new Option(c.name, c.id);
+                            select.appendChild(option);
+                        });
+                    }
+                } catch (error) { console.error("Error populating customers:", error); }
+            }
+            
+            document.getElementById('select-customer').addEventListener('change', async function() {
+                const customerId = this.value;
+                const tbody = document.getElementById('billing-notes-table');
+                document.getElementById('total-amount-paid').value = '0.00';
+                document.getElementById('save-receipt-btn').disabled = true;
+                if (!customerId) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Please select a customer</td></tr>'; return; }
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>';
+                try {
+                    const response = await fetch(`/api/billing-notes/unpaid/${customerId}`);
+                    const result = await response.json();
+                    if (result.success && result.data.length > 0) {
+                        tbody.innerHTML = result.data.map(bn => `
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" name="billing_note_ids" value="${bn.id}" data-amount="${bn.total_amount}"></td>
+                                <td>${bn.bn_number}</td><td>${formatDate(bn.issue_date)}</td>
+                                <td class="text-end">${formatCurrency(bn.total_amount)}</td>
+                            </tr>`).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No outstanding billing notes found</td></tr>';
+                    }
+                } catch(err) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading data</td></tr>'; }
+            });
+
+            document.getElementById('billing-notes-table').addEventListener('change', function(e) {
+                if (e.target.type === 'checkbox') {
+                    const selectedCheckboxes = document.querySelectorAll('input[name="billing_note_ids"]:checked');
+                    let currentTotal = 0;
+                    selectedCheckboxes.forEach(cb => {
+                        currentTotal += parseFloat(cb.dataset.amount || 0);
+                    });
+                    document.getElementById('total-amount-paid').value = formatCurrency(currentTotal);
+                    document.getElementById('save-receipt-btn').disabled = selectedCheckboxes.length === 0;
+                }
+            });
+
+            document.getElementById('save-receipt-btn').addEventListener('click', async function() {
+                this.disabled = true; this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+                
+                // ✨ FIX: This section correctly gathers all required data
+                const selectedCheckboxes = document.querySelectorAll('input[name="billing_note_ids"]:checked');
+                const billing_note_ids = Array.from(selectedCheckboxes).map(cb => cb.value);
+                const total_amount_paid = parseFloat(document.getElementById('total-amount-paid').value.replace(/,/g, ''));
+
+                const payload = {
+                    customer_id: document.getElementById('select-customer').value,
+                    payment_date: document.getElementById('payment-date').value,
+                    payment_method: document.getElementById('payment-method').value,
+                    notes: document.getElementById('notes').value,
+                    billing_note_ids: billing_note_ids, // Correct: an ARRAY
+                    total_amount_paid: total_amount_paid // Correct: total amount is included
+                };
+                
+                try {
+                    const response = await fetch('/api/receipts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Unknown server error');
+                    
+                    alert('Receipt saved successfully!');
+                    window.location.href = `/receipt-detail.html?id=${result.data.receipt_id}`;
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                    this.disabled = false; this.innerHTML = 'Save Receipt';
+                }
+            });
+
+            // Initialize Page
+            (async () => {
+                await populateCustomers();
+                // The receipt number is now generated by the backend, but we can fetch it for display
+                const reNumResponse = await fetch('/api/receipts/next-receipt-number');
+                if (reNumResponse.ok) {
+                    const reNumResult = await reNumResponse.json();
+                    if (reNumResult.success) { 
+                        document.getElementById('receipt-number').value = reNumResult.next_receipt_number; 
+                    }
+                }
+                document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
+            })();
+        });
+    </script>
+</body>
+</html>

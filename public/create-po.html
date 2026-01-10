@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>สร้างใบสั่งซื้อ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <h2 class="page-title">สร้างใบสั่งซื้อใหม่</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <form id="create-po-form">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">เลขที่ใบสั่งซื้อ (PO)</label>
+                                        <input type="text" class="form-control" id="po_number" readonly>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label required">ผู้ขาย (Vendor)</label>
+                                        <select id="vendor-select" placeholder="เลือกผู้ขาย..."></select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">อ้างอิงใบเสนอราคา</label>
+                                        <input type="text" class="form-control" id="quotation_ref">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label required">วันที่สั่งซื้อ</label>
+                                        <input type="date" class="form-control" id="order_date">
+                                    </div>
+                                </div>
+                                <hr>
+                                <div id="items-section" class="mt-4" style="display: none;">
+                                    <h3 class="card-title">รายการ</h3>
+                                    <div id="po-items-container"></div>
+                                    <button type="button" id="add-item-btn"
+                                        class="btn btn-outline-primary mt-3">เพิ่มรายการ</button>
+                                </div>
+                            </div>
+                            <div class="card-footer d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-muted">ยอดรวมสุทธิ:</span>
+                                    <span class="h2 ms-2" id="grand-total">฿0.00</span>
+                                </div>
+                                <div>
+                                    <a href="/purchase-orders.html" class="btn">ยกเลิก</a>
+                                    <button type="submit" class="btn btn-primary" disabled>บันทึกใบสั่งซื้อ</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        const userDisplay = document.getElementById('display-username');
+                        if (userDisplay) {
+                            userDisplay.textContent = data.displayName;
+                        }
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            await loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script src="/js/create-po.js"></script>
+</body>
+
+</html>

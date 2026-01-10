@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="th">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>รายละเอียดใบสั่งซื้อ - Smart Factory</title>
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+  <style>
+    /* สไตล์สำหรับหน้าจอปกติ */
+    .signature-line {
+      border-top: 1px solid #6c757d;
+      margin: 40px 15% 0 15%;
+    }
+
+    /* === สไตล์สำหรับสั่งพิมพ์ (Print) === */
+    /* === สไตล์สำหรับสั่งพิมพ์ (Print) === */
+    /* === สไตล์สำหรับสั่งพิมพ์ (Print) === */
+    @media print {
+
+      /* ซ่อน Sidebar และส่วนที่ไม่ต้องการพิมพ์ */
+      .no-print,
+      aside,
+      .navbar,
+      .btn,
+      .page-header,
+      .nav-item {
+        display: none !important;
+      }
+
+      /* ปรับ Layout ให้เต็มหน้ากระดาษ */
+      .page-wrapper {
+        margin-left: 0 !important;
+      }
+
+      .page-body {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      .container-xl {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* ปรับแต่ง Card สำหรับพิมพ์ */
+      .card {
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+
+      .card-body {
+        padding: 0 !important;
+      }
+
+      /* ตั้งค่าหน้ากระดาษ A4 */
+      @page {
+        size: A4;
+        margin: 1cm;
+        /* ลดขอบกระดาษลงเพื่อให้เนื้อหาพอดี */
+      }
+
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background-color: white !important;
+        visibility: visible;
+        font-size: 12px;
+        /* ลดขนาดฟอนต์ลง */
+      }
+
+
+      /* ลดขนาด Header ต่างๆ */
+      h1,
+      .h1 {
+        font-size: 1.5rem !important;
+      }
+
+      h2,
+      .h2 {
+        font-size: 1.25rem !important;
+      }
+
+      h3,
+      .h3 {
+        font-size: 1.1rem !important;
+      }
+
+      /* ลดระยะห่างต่างๆ */
+      .my-4 {
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
+      }
+
+      .mt-4 {
+        margin-top: 1rem !important;
+      }
+
+      .mt-6 {
+        margin-top: 2rem !important;
+      }
+
+      /* กำหนดความสูงแถวสินค้าให้เล็กลง */
+      .item-row {
+        height: 35px;
+      }
+
+      .table td,
+      .table th {
+        padding: 0.25rem 0.5rem !important;
+      }
+
+      /* ปรับลายเซ็น */
+      .signature-line {
+        margin-top: 20px !important;
+      }
+
+      /* ย่อส่วนทั้งหมดลงเล็กน้อยเพื่อให้พอดีหน้าเดียวแน่นอน */
+      .page {
+        transform: scale(0.95);
+        transform-origin: top left;
+        width: 105%;
+        /* ชดเชย scale */
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <div class="page">
+      <div class="page-body">
+        <div class="container-xl">
+          <div class="row">
+            <div class="col-lg-10 mx-auto">
+              <div class="d-print-none mb-4 mt-4">
+                <div class="row g-2 align-items-center">
+                  <div class="col">
+                    <h2 class="page-title" id="po-title">
+                      รายละเอียดใบสั่งซื้อ #...
+                    </h2>
+                  </div>
+                  <div class="col-auto ms-auto">
+                    <a href="/purchase-orders.html" class="btn btn-outline-secondary">
+                      กลับไปที่รายการ
+                    </a>
+                    <button type="button" class="btn btn-primary" onclick="window.print();">
+                      พิมพ์
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card card-lg">
+                <div class="card-body">
+                  <!-- ... โค้ดส่วน Header และข้อมูลผู้ขาย (เหมือนเดิม) ... -->
+                  <div class="row">
+                    <div class="col-7">
+                      <p class="h3">บริษัท เอส ป้า เอ็นจิเนียริ่ง จำกัด</p>
+                      <address>
+                        99/2 หมู่ 2 ต.บ่อตาโล อ.วังน้อย จ.พระนครศรีอยุธยา 13170<br>
+                        <strong>เลขประจำตัวผู้เสียภาษี: 0135555011210 (สำนักงานใหญ่)</strong><br>
+                        TEL: 089-1804303
+                      </address>
+                    </div>
+                    <div class="col-5 text-end">
+                      <h1 class="text-uppercase mb-1">ใบสั่งซื้อ</h1>
+                      <h2 class="text-uppercase text-muted">Purchase Order</h2>
+                    </div>
+                  </div>
+                  <hr class="my-4">
+                  <div class="row">
+                    <div class="col-7">
+                      <strong>ผู้ขาย:</strong>
+                      <address id="vendor-details" class="mt-2">
+                        <!-- ข้อมูลผู้ขายจะถูกใส่ที่นี่ -->
+                      </address>
+                    </div>
+                    <div class="col-5">
+                      <table class="table table-sm table-borderless">
+                        <tr>
+                          <td><strong>เลขที่ใบสั่งซื้อ:</strong></td>
+                          <td class="text-end" id="po-number"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>วันที่สั่งซื้อ:</strong></td>
+                          <td class="text-end" id="order-date"></td>
+                        </tr>
+                        <tr>
+                          <td><strong>วันที่กำหนดส่ง:</strong></td>
+                          <td class="text-end" id="expected-date"></td>
+                        </tr>
+                      </table>
+                      <!-- ส่วนจัดการสถานะ (แสดงเฉพาะตอนไม่พิมพ์) -->
+                      <div class="no-print mt-3">
+                        <p class="mb-1">สถานะปัจจุบัน: <strong id="current-status" class="text-primary">...</strong></p>
+                        <div class="input-group">
+                          <select id="status-select" class="form-select form-select-sm">
+                            <option value="draft">ฉบับร่าง</option>
+                            <option value="sent">ส่งแล้ว</option>
+                            <option value="completed">เสร็จสมบูรณ์</option>
+                            <option value="cancelled">ยกเลิก</option>
+                          </select>
+                          <button id="update-status-btn" class="btn btn-sm btn-outline-primary">อัปเดต</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p class="mt-4">ทางบริษัทมีความยินดีสั่งซื้อสินค้าดังมีรายการต่อไปนี้ / WE ARE PLEASED TO ORDER YOU
+                    FOLLOW</p>
+
+                  <table class="table table-transparent table-responsive table-bordered">
+                    <thead>
+                      <tr>
+                        <th class="text-center" style="width: 5%">ลำดับ</th>
+                        <th>รายการ</th>
+                        <th class="text-center" style="width: 10%">จำนวน</th>
+                        <th class="text-end" style="width: 15%">ราคา/หน่วย</th>
+                        <th class="text-end" style="width: 15%">จำนวนเงิน</th>
+                      </tr>
+                    </thead>
+                    <tbody id="po-items-list">
+                      <!-- รายการสินค้าจะถูกใส่ที่นี่ -->
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colspan="4" class="text-end"><strong>รวมเงิน</strong></td>
+                        <td class="text-end" id="sub-total">0.00</td>
+                      </tr>
+                      <tr>
+                        <td colspan="4" class="text-end"><strong>ภาษีมูลค่าเพิ่ม (7%)</strong></td>
+                        <td class="text-end" id="vat-amount">0.00</td>
+                      </tr>
+                      <tr>
+                        <td colspan="4" class="text-end h3"><strong>ยอดรวมสุทธิ</strong></td>
+                        <td class="text-end h3" id="grand-total">0.00</td>
+                      </tr>
+                      <tr>
+                        <td colspan="5" class="text-center bg-light-lt">
+                          <strong id="grand-total-thai"></strong>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+
+                  <div class="mt-4">
+                    <p><strong>หมายเหตุ:</strong></p>
+                    <ul class="list-unstyled ps-4">
+                      <li>ส่งของกรุณาแนบใบสั่งซื้อด้วยทุกครั้ง</li>
+                      <li>กำหนดส่งมอบวันที่: <strong id="remark-expected-date">-</strong></li>
+                    </ul>
+                    <p><strong>เงื่อนไขการชำระเงิน:</strong> CREDIT TERM 30 DAYS.</p>
+                  </div>
+
+                  <!-- ... โค้ดส่วนลายเซ็น (เหมือนเดิม) ... -->
+                  <div class="row mt-6">
+                    <div class="col-4 text-center">
+                      <div class="signature-line"></div>
+                      <p class="mt-2">(.................................................)</p>
+                      <p>ผู้จัดทำ / Prepared by</p>
+                    </div>
+                    <div class="col-4 text-center">
+                      <div class="signature-line"></div>
+                      <p class="mt-2">(.................................................)</p>
+                      <p>ผู้ตรวจสอบ / Checked by</p>
+                    </div>
+                    <div class="col-4 text-center">
+                      <div class="signature-line"></div>
+                      <p class="mt-2">(.................................................)</p>
+                      <p>ผู้อนุมัติ / Approved by</p>
+                    </div>
+                  </div>
+                  <div class="text-muted text-end mt-4 no-print">
+                    ESPA-PC-FM-001-001 Rev 00
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/po-details.js"></script>
+</body>
+
+</html>

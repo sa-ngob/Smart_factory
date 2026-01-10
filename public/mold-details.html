@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>รายละเอียดแม่พิมพ์ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+        .details-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; align-items: center; }
+        .details-grid dt { font-weight: 500; text-align: right; color: var(--tblr-muted); }
+        .qr-code-container { max-width: 150px; }
+        .img-preview { max-width: 100%; height: auto; border-radius: 4px; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .page-body { padding-top: 0; }
+            .card { border: none !important; box-shadow: none !important; }
+            @page { size: A4; margin: 1.5cm; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg no-print" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none no-print">
+                <div class="container-xl">
+                    <p class="text-end text-muted mb-2">
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title" id="mold-title">กำลังโหลดข้อมูลแม่พิมพ์...</h2>
+                        </div>
+                        <div class="col-auto ms-auto btn-list">
+                            <a href="/molds.html" class="btn btn-outline-secondary">กลับ</a>
+                            <a href="#" id="edit-mold-btn" class="btn">แก้ไขข้อมูล</a>
+                            <a href="#" id="manage-parts-btn" class="btn">จัดการ Part List</a>
+                            <button type="button" class="btn btn-primary" onclick="window.print();">พิมพ์</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card card-lg">
+                        <div class="card-body">
+                            <div id="main-details-container">
+                                <p class="text-center">กำลังโหลดข้อมูล...</p>
+                            </div>
+                            <hr class="my-4">
+                            <h3 class="card-title">Part List</h3>
+                            <div class="table-responsive">
+                                <table class="table table-vcenter card-table">
+                                    <thead>
+                                        <tr>
+                                            <th>รหัสชิ้นส่วน</th>
+                                            <th>ชื่อชิ้นส่วน</th>
+                                            <th class="text-center">จำนวน</th>
+                                            <th>วัสดุ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="part-list-body">
+                                        <tr><td colspan="4" class="text-center text-muted">กำลังโหลด...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ✅ แก้ไข: เรียกใช้ฟังก์ชันที่ถูกต้องจาก auth-client.js
+            loadSidebar();
+            loadUserInfo(); // ฟังก์ชันนี้จะโหลดและแสดงชื่อผู้ใช้โดยอัตโนมัติ
+        });
+    </script>
+    <script src="/js/mold-details.js" defer></script>
+</body>
+</html>

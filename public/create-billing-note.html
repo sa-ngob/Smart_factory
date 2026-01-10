@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>สร้างใบวางบิลใหม่ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark"><div class="container-fluid" id="sidebar-container"></div></aside>    
+        <div class="page-wrapper">
+            <div class="page-header"><div class="container-xl"><h2 class="page-title">สร้างใบวางบิลใหม่</h2></div></div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label required">1. เลือกลูกค้า</label>
+                                    <select class="form-select" id="select-customer"><option value="">-- กรุณาเลือกลูกค้า --</option></select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">เลขที่ใบวางบิล</label>
+                                    <input type="text" class="form-control" id="bn-number" readonly>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label required">วันที่ออกเอกสาร</label>
+                                    <input type="date" class="form-control" id="issue-date">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label required">วันที่นัดรับชำระ</label>
+                                    <input type="date" class="form-control" id="due-date">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">เงื่อนไขชำระเงิน</label>
+                                    <input type="text" class="form-control" id="payment-terms" placeholder="e.g., NET 30">
+                                </div>
+                            </div>
+                            <hr>
+                            <h4 class="mb-3">2. เลือก Invoice ที่ต้องการวางบิล</h4>
+                            <div class="table-responsive" style="max-height: 300px;">
+                                <table class="table table-sm table-hover">
+                                    <thead><tr>
+                                        <th style="width: 1%;">เลือก</th>
+                                        <th>เลขที่ Invoice</th><th>วันที่ออก</th>
+                                        <th class="text-end">ยอดเงิน</th>
+                                    </tr></thead>
+                                    <tbody id="invoices-table">
+                                        <tr><td colspan="4" class="text-center text-muted">กรุณาเลือกลูกค้า</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                             <hr>
+                             <div class="row align-items-end">
+                                <div class="col-md-8 mb-3">
+                                    <label class="form-label">หมายเหตุ</label>
+                                    <textarea id="remark" class="form-control" rows="2"></textarea>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">ยอดรวมวางบิล</label>
+                                    <input type="text" class="form-control text-end" id="total-amount" value="0.00" readonly style="font-weight: bold;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-end">
+                            <a href="/billing-notes.html" class="btn">ยกเลิก</a>
+                            <button type="button" class="btn btn-primary" id="save-bn-btn" disabled>บันทึกใบวางบิล</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch('/api/sidebar').then(r => r.text()).then(d => { document.getElementById('sidebar-container').innerHTML = d; });
+            const formatCurrency = (num) => (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const formatDate = (dateString) => new Date(dateString).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+            async function populateCustomers() {
+                const select = document.getElementById('select-customer');
+                try {
+                    const response = await fetch('/api/entities?list_for=customer');
+                    const result = await response.json();
+                    if (result.data) {
+                        result.data.forEach(c => { 
+                            const option = new Option(c.name, c.id);
+                            select.appendChild(option);
+                        });
+                    }
+                } catch (error) { console.error("Error populating customers:", error); }
+            }
+            
+            document.getElementById('select-customer').addEventListener('change', async function() {
+                const customerId = this.value;
+                const tbody = document.getElementById('invoices-table');
+                document.getElementById('total-amount').value = '0.00';
+                document.getElementById('save-bn-btn').disabled = true;
+
+                if (!customerId) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">กรุณาเลือกลูกค้า</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">กำลังโหลด...</td></tr>';
+                try {
+                    const response = await fetch(`/api/invoices/unbilled/${customerId}`);
+                    const result = await response.json();
+                    if (result.success && result.data.length > 0) {
+                        tbody.innerHTML = result.data.map(inv => `
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" name="invoice_ids" value="${inv.id}" data-amount="${inv.grand_total}"></td>
+                                <td>${inv.invoice_number}</td>
+                                <td>${formatDate(inv.issue_date)}</td>
+                                <td class="text-end">${formatCurrency(inv.grand_total)}</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">ไม่พบ Invoice ที่รอวางบิล</td></tr>';
+                    }
+                } catch(err) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+                }
+            });
+
+            document.getElementById('invoices-table').addEventListener('change', function(e) {
+                if (e.target.type === 'checkbox') {
+                    const selectedInvoices = document.querySelectorAll('input[name="invoice_ids"]:checked');
+                    let currentTotal = 0;
+                    selectedInvoices.forEach(cb => {
+                        currentTotal += parseFloat(cb.dataset.amount || 0);
+                    });
+                    
+                    document.getElementById('total-amount').value = formatCurrency(currentTotal);
+                    document.getElementById('save-bn-btn').disabled = selectedInvoices.length === 0;
+                }
+            });
+
+            document.getElementById('save-bn-btn').addEventListener('click', async function() {
+                const selectedInvoices = document.querySelectorAll('input[name="invoice_ids"]:checked');
+                const invoice_ids = Array.from(selectedInvoices).map(cb => cb.value);
+
+                const payload = {
+                    customer_id: document.getElementById('select-customer').value,
+                    bn_number: document.getElementById('bn-number').value,
+                    issue_date: document.getElementById('issue-date').value,
+                    due_date: document.getElementById('due-date').value,
+                    payment_terms: document.getElementById('payment-terms').value,
+                    remark: document.getElementById('remark').value,
+                    invoice_ids: invoice_ids,
+                    total_amount: parseFloat(document.getElementById('total-amount').value.replace(/,/g, ''))
+                };
+                
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+                
+                try {
+                    const response = await fetch('/api/billing-notes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Unknown server error');
+                    
+                    alert('บันทึกใบวางบิลสำเร็จ!');
+                    window.location.href = `/billing-note-detail.html?id=${result.data.billing_note_id}`;
+                } catch (error) {
+                    alert('เกิดข้อผิดพลาด: ' + error.message);
+                    this.disabled = false;
+                    this.innerHTML = 'บันทึกใบวางบิล';
+                }
+            });
+
+            // Initialize Page
+            (async () => {
+                await populateCustomers();
+                const bnNumResponse = await fetch('/api/billing-notes/next-bn-number');
+                const bnNumResult = await bnNumResponse.json();
+                if (bnNumResult.success) { document.getElementById('bn-number').value = bnNumResult.next_bn_number; }
+                
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('issue-date').value = today;
+            })();
+            
+        });
+    </script>
+</body>
+</html>

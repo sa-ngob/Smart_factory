@@ -1,0 +1,8 @@
+# ไม่ต้องคัดลอก dependencies เข้าไปใน image เพราะเราจะติดตั้งใน Dockerfile
+node_modules
+
+# ไฟล์ Log และไฟล์ชั่วคราวต่างๆ
+npm-debug.log
+*.log
+data
+*.db

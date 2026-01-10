@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>แก้ไข BOM - Smart Factory</title>
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+  <div class="page">
+    <!-- Sidebar (โหลดแบบเดียวกับ boms.html) -->
+    <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+    <div class="page-wrapper">
+      <div class="page-header d-print-none">
+        <div class="container-xl">
+          <div class="row g-2 align-items-center">
+            <div class="col">
+              <h2 id="page-title" class="page-title">แก้ไข Bill of Materials (BOM)</h2>
+              <p class="mt-1">Logged in as: <strong id="display-username">Loading...</strong></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-body">
+        <div class="container-xl">
+          <div id="loading-indicator" class="text-center" style="display: none;">
+            <div class="spinner-border" role="status"></div>
+            <p>กำลังโหลดข้อมูล BOM...</p>
+          </div>
+
+          <form id="bom-form" class="card" style="display: none;">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-5 mb-3">
+                  <label class="form-label required">สินค้าสำเร็จรูป (Finished Good)</label>
+                  <select id="product-select" name="product_part_number" class="form-select" required>
+                    <option value="">-- กรุณาเลือกสินค้า --</option>
+                  </select>
+                  <input type="hidden" id="product_name" name="product_name">
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label required">แม่พิมพ์ที่ใช้ (Mold)</label>
+                  <select id="mold-select" name="mold_id" class="form-select" required>
+                    <option value="">-- กรุณาเลือกแม่พิมพ์ --</option>
+                  </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                  <label class="form-label">เวอร์ชัน</label>
+                  <input type="number" id="version" name="version" class="form-control" value="1" min="1">
+                </div>
+                <div class="col-md-2 mb-3">
+                  <label class="form-label">สถานะ</label>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active">
+                    <label class="form-check-label" for="is_active">Active</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-body border-top">
+              <div class="d-flex align-items-center mb-3">
+                <h3 class="card-title">รายการวัตถุดิบ</h3>
+                <div class="ms-auto lh-1">
+                  <div class="text-muted">Total Ratio: <strong id="total-ratio">0 %</strong></div>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-bordered">
+                  <thead>
+                  <tr>
+                    <th>รหัสวัตถุดิบ</th>
+                    <th>ชื่อวัตถุดิบ</th>
+                    <th style="width: 150px;">Mixing Ratio (%)</th>
+                    <th style="width: 120px;">หน่วย</th>
+                    <th style="width: 50px;"></th>
+                  </tr>
+                  </thead>
+                  <tbody id="bom-items-body"></tbody>
+                </table>
+              </div>
+              <button type="button" id="add-item-btn" class="btn btn-outline-primary mt-3">เพิ่มวัตถุดิบ</button>
+            </div>
+
+            <div class="card-footer text-end">
+              <a href="/boms.html" class="btn">ยกเลิก</a>
+              <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabler -->
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+  <!-- เหมือน boms.html: ใช้ auth-client + โหลด sidebar/user -->
+  <script src="/js/auth-client.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      async function loadSidebar() {
+        try {
+          const res = await fetchWithAuth('/api/sidebar');
+          const html = await res.text();
+          document.getElementById('sidebar').innerHTML = html;
+
+          // ไฮไลต์เมนู "จัดการ BOM" (ลิงก์ /boms.html) ให้ active เหมือนหน้า boms.html
+          const active = document.querySelector('.navbar-vertical .nav-link[href="/boms.html"]');
+          if (active) active.classList.add('active');
+        } catch (e) {
+          console.error('Could not load sidebar:', e.message);
+        }
+      }
+
+      async function loadUserInfo() {
+        try {
+          const res = await fetchWithAuth('/api/user-info');
+          const data = await res.json();
+          if (data.success && data.displayName) {
+            document.getElementById('display-username').textContent = data.displayName;
+          }
+        } catch (e) {
+          console.error('Could not load user info:', e.message);
+        }
+      }
+
+      loadSidebar();
+      loadUserInfo();
+    });
+  </script>
+
+  <!-- สคริปต์หน้าฟอร์ม -->
+  <script src="/edit-bom.js" defer></script>
+</body>
+</html>

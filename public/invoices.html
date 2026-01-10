@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>รายการใบแจ้งหนี้ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">รายการใบแจ้งหนี้ (Invoices)</h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <a href="/create-invoice.html" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                    viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <path d="M12 5l0 14"></path>
+                                    <path d="M5 12l14 0"></path>
+                                </svg>
+                                สร้างใบแจ้งหนี้ใหม่
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table card-table table-vcenter text-nowrap datatable">
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ Invoice</th>
+                                        <th>ลูกค้า</th>
+                                        <th>วันที่ออก</th>
+                                        <th>ครบกำหนด</th>
+                                        <th class="text-end">ยอดสุทธิ</th>
+                                        <th class="text-center">สถานะ</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoices-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // Highlight the active menu item
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/invoices.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function initializeInvoicesPage() {
+                const formatDate = (dateString) => {
+                    if (!dateString) return '-';
+                    return new Date(dateString).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                };
+
+                const formatCurrency = (num) => {
+                    if (num === null || num === undefined) return '0.00';
+                    return Number(num).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+                };
+
+                const formatStatus = (status, dueDate) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const dDate = new Date(dueDate);
+
+                    let finalStatus = status;
+                    if (status === 'issued' && dDate < today) {
+                        finalStatus = 'overdue';
+                    }
+
+                    const statuses = {
+                        'issued': { class: 'primary', text: 'วางบิลแล้ว' },
+                        'paid': { class: 'success', text: 'ชำระแล้ว' },
+                        'partial_paid': { class: 'info', text: 'ชำระบางส่วน' },
+                        'overdue': { class: 'danger', text: 'เกินกำหนด' },
+                        'cancelled': { class: 'secondary', text: 'ยกเลิก' }
+                    };
+                    const s = statuses[finalStatus] || { class: 'secondary', text: finalStatus };
+                    return `<span class="badge bg-${s.class}-lt">${s.text}</span>`;
+                };
+
+                const tableBody = document.getElementById('invoices-table-body');
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">กำลังโหลดข้อมูล...</td></tr>';
+                try {
+                    // [แก้ไข] ใช้ fetchWithAuth
+                    const response = await fetchWithAuth('/api/invoices');
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error);
+
+                    const invoices = result.data;
+                    if (!invoices || invoices.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่พบข้อมูลใบแจ้งหนี้</td></tr>';
+                        return;
+                    }
+
+                    tableBody.innerHTML = invoices.map(inv => `
+                        <tr>
+                            <td><a href="/invoice-detail.html?id=${inv.id}" class="text-reset">${inv.invoice_number}</a></td>
+                            <td>${inv.customer_name}</td>
+                            <td>${formatDate(inv.issue_date)}</td>
+                            <td>${formatDate(inv.due_date)}</td>
+                            <td class="text-end">${formatCurrency(inv.grand_total)}</td>
+                            <td class="text-center">${formatStatus(inv.status, inv.due_date)}</td>
+                            <td class="text-end">
+                                <a href="/invoice-detail.html?id=${inv.id}" class="btn btn-sm">ดูรายละเอียด</a>
+                            </td>
+                        </tr>
+                    `).join('');
+                } catch (error) {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${error.message}</td></tr>`;
+                }
+            }
+
+            loadSidebar();
+            // loadUserInfo(); // ไม่มี element 'display-username' ในหน้านี้
+            initializeInvoicesPage();
+        });
+    </script>
+</body>
+
+</html>

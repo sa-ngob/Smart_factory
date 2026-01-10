@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Project Management - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <style>
+        /* Comfortable Dark Theme Palette */
+        :root {
+            --gantt-bg: #1e293b;
+            /* Slate 800 */
+            --gantt-header-bg: #0f172a;
+            /* Slate 900 */
+            --gantt-track-bg: #334155;
+            /* Slate 700 */
+            --gantt-border: #475569;
+            /* Slate 600 */
+            --gantt-text: #e2e8f0;
+            /* Slate 200 */
+            --gantt-text-muted: #94a3b8;
+            /* Slate 400 */
+        }
+
+        .gantt-wrapper {
+            overflow-x: auto;
+            background-color: var(--gantt-bg);
+            color: var(--gantt-text);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .gantt-header {
+            background-color: var(--gantt-header-bg);
+            color: var(--gantt-text);
+            padding: 10px 0;
+            border-bottom: 1px solid var(--gantt-border);
+            border-radius: 6px 6px 0 0;
+        }
+
+        .gantt-body {
+            min-width: 1200px;
+            /* Ensure horizontal scroll for complex charts */
+            padding-top: 10px;
+        }
+
+        .gantt-row-label {
+            color: var(--gantt-text);
+            font-weight: 500;
+        }
+
+        .gantt-month {
+            color: var(--gantt-text-muted);
+            font-size: 0.85rem;
+            border-right: 1px solid var(--gantt-border);
+        }
+
+        .gantt-bar {
+            height: 24px;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .gantt-bar:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        .gantt-progress {
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px 0 0 4px;
+        }
+
+        .progress-track {
+            background-color: var(--gantt-track-bg);
+            border: 1px solid var(--gantt-border);
+            height: 24px;
+            border-radius: 99px;
+            /* Pill shape for track */
+        }
+
+        /* Task Row hover effect */
+        .task-row:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+
+        .print-only-header {
+            display: none;
+        }
+
+        /* Print Styles */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0;
+            }
+
+            body {
+                margin: 0;
+                padding: 0;
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Hide EVERYTHING by default */
+            body>* {
+                display: none !important;
+            }
+
+            /* Show ONLY our dedicated print container */
+            #print-container {
+                display: block !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: white !important;
+                color: black !important;
+                padding: 20px;
+                z-index: 99999;
+            }
+
+            #print-container * {
+                visibility: visible !important;
+            }
+
+            /* Print Container Specific Styles */
+            .print-header {
+                border-bottom: 2px solid #000;
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+            }
+
+            .print-header h1 {
+                font-size: 24px;
+                margin: 0 0 10px 0;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .print-info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                font-size: 14px;
+            }
+
+            /* Clean Table Layout for Gantt */
+            .print-gantt-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                font-size: 12px;
+            }
+
+            .print-gantt-table th,
+            .print-gantt-table td {
+                border: 1px solid #ccc;
+                padding: 8px;
+                vertical-align: middle;
+            }
+
+            .print-gantt-table th {
+                background-color: #f8f9fa !important;
+                font-weight: bold;
+                text-align: center;
+                color: black;
+            }
+
+            .print-gantt-table td.task-name {
+                width: 250px;
+                font-weight: bold;
+                background-color: #fff;
+            }
+
+            /* Simple Bar in Print */
+            .print-bar-container {
+                position: relative;
+                height: 20px;
+                background: #eee;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+
+            .print-bar {
+                position: absolute;
+                height: 100%;
+                top: 0;
+                background: #666;
+                /* Default */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 10px;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+            }
+
+            .bg-green {
+                background-color: #2fb344 !important;
+            }
+
+            .bg-blue {
+                background-color: #206bc4 !important;
+            }
+
+            .bg-secondary {
+                background-color: #6c757d !important;
+            }
+
+            .bg-yellow {
+                background-color: #f7a600 !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <!-- Sidebar -->
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+        </aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">
+                                Project Management Dashboard
+                            </h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <button type="button" class="btn btn-primary" id="btn-add-project">
+                                เพิ่มโปรเจกต์ใหม่
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <!-- Summary Cards -->
+                    <div id="summary-cards-container" class="row row-deck row-cards mb-4"></div>
+                    <!-- Projects Table -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">All Projects</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>Project Name</th>
+                                        <th>Customer</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                        <th>Due Date</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="projects-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal modal-blur fade" id="project-modal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form id="project-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="project-modal-title">เพิ่มโปรเจกต์ใหม่</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Form content will be generated by JS -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn me-auto" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึก</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal modal-blur fade" id="report-modal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content" id="report-modal-content">
+                <!-- Report content will be generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div class="modal modal-blur fade" id="task-update-modal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" id="task-update-modal-content">
+                <!-- Task update form will be generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Core JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            // === Load Sidebar & User Info with Auth ===
+            try {
+                const sidebarRes = await fetchWithAuth('/api/sidebar');
+                if (sidebarRes.ok) {
+                    const sidebarHtml = await sidebarRes.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    // Activate Menu
+                    const currentLink = document.querySelector('a.nav-link[href="/projects.html"]');
+                    if (currentLink) {
+                        currentLink.parentElement.classList.add('active');
+                    }
+                }
+
+                const userRes = await fetchWithAuth('/api/user-info');
+                if (userRes.ok) {
+                    const userData = await userRes.json();
+                    if (userData.success && userData.displayName) {
+                        document.getElementById('display-username').textContent = userData.displayName;
+                    }
+                }
+            } catch (error) {
+                console.error("Auth/Sidebar Error:", error);
+            }
+
+            // --- Element References ---
+            const tableBody = document.getElementById('projects-table-body');
+            const summaryContainer = document.getElementById('summary-cards-container');
+            const btnAddProject = document.getElementById('btn-add-project');
+
+            // Modals - Bootstrap object is now available
+            const projectModalEl = document.getElementById('project-modal');
+            const projectModal = new bootstrap.Modal(projectModalEl);
+            const projectForm = document.getElementById('project-form');
+            const projectModalTitle = document.getElementById('project-modal-title');
+
+            const reportModalEl = document.getElementById('report-modal');
+            const reportModal = new bootstrap.Modal(reportModalEl);
+
+            const taskUpdateModalEl = document.getElementById('task-update-modal');
+            const taskUpdateModal = new bootstrap.Modal(taskUpdateModalEl);
+
+            let allProjects = [];
+            let allCustomers = [];
+
+            // --- Helper Functions ---
+            const formatDate = (d) => d ? new Date(d).toLocaleDateString('th-TH') : '-';
+            const getType = (t) => ({ 'new_mold': 'New Mold', 'repair_mold': 'Repair Mold', 'part_making': 'Part Making' }[t] || t);
+            const toInputDate = (d) => d ? new Date(d).toISOString().split('T')[0] : '';
+
+            // --- Main Load Function ---
+            async function loadInitialData() {
+                try {
+                    const [projectsRes, customersRes] = await Promise.all([
+                        fetchWithAuth('/api/projects'),
+                        fetchWithAuth('/api/entities?type=customer')
+                    ]);
+                    if (!projectsRes.ok || !customersRes.ok) throw new Error('Failed to load initial data');
+
+                    const projectsResult = await projectsRes.json();
+                    const customersResult = await customersRes.json();
+
+                    allProjects = projectsResult.data;
+                    allCustomers = customersResult.data;
+
+                    updateSummary(allProjects);
+                    renderTable(allProjects);
+
+                } catch (error) {
+                    console.error(error);
+                    tableBody.innerHTML = `<tr><td colspan="7" class="text-danger text-center">${error.message}</td></tr>`;
+                }
+            }
+
+            // --- Render Functions ---
+            function updateSummary(projects) {
+                const total = projects.length;
+                const complete = projects.filter(p => p.status === 'Complete').length;
+                const inProcess = total - complete;
+                const overdue = projects.filter(p => new Date(p.target_date) < new Date() && p.status !== 'Complete').length;
+
+                summaryContainer.innerHTML = `
+                    <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-primary text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M19 11h-14a2 2 0 0 0 -2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2 -2v-6a2 2 0 0 0 -2 -2z" /><path d="M12 11v-8l-3 4l3 4" /><path d="M12 11v-8l3 4l-3 4" /></svg></span></div><div class="col"><div class="font-weight-medium">${total} Projects</div><div class="text-muted">Total Projects</div></div></div></div></div></div>
+                    <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-green text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg></span></div><div class="col"><div class="font-weight-medium">${complete} Projects</div><div class="text-muted">Complete</div></div></div></div></div></div>
+                    <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-yellow text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 8v4l3 3m6 -3a9 9 0 1 1 -18 0a9 9 0 0 1 18 0z" /></svg></span></div><div class="col"><div class="font-weight-medium">${inProcess} Projects</div><div class="text-muted">In Process</div></div></div></div></div></div>
+                    <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-red text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4h.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg></span></div><div class="col"><div class="font-weight-medium">${overdue} Projects</div><div class="text-muted">Overdue</div></div></div></div></div></div>
+                `;
+            }
+
+            function renderTable(projects) {
+                tableBody.innerHTML = '';
+                if (projects.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">ยังไม่มีโปรเจกต์</td></tr>';
+                    return;
+                }
+                projects.forEach(p => {
+                    const isOverdue = new Date(p.target_date) < new Date() && p.status !== 'Complete';
+                    let statusBadge;
+                    if (p.status === 'Complete') {
+                        statusBadge = '<span class="badge bg-green-lt">Complete</span>';
+                    } else if (isOverdue) {
+                        statusBadge = '<span class="badge bg-red-lt">Overdue</span>';
+                    } else {
+                        statusBadge = `<span class="badge bg-yellow-lt">${p.status}</span>`;
+                    }
+
+                    const row = document.createElement('tr');
+                    row.dataset.projectId = p.id;
+                    row.innerHTML = `
+                        <td>${p.project_name}</td><td>${p.customer_name || '-'}</td>
+                        <td>${getType(p.project_type)}</td><td>${statusBadge}</td>
+                        <td><div class="progress progress-sm"><div class="progress-bar" style="width: ${p.progress}%"></div></div></td>
+                        <td>${formatDate(p.target_date)}</td>
+                        <td class="text-end"><div class="btn-list flex-nowrap">
+                            <button class="btn btn-sm btn-view">View</button>
+                            <button class="btn btn-sm btn-edit">Edit</button>
+                            <button class="btn btn-sm btn-danger btn-delete">Delete</button>
+                        </div></td>`;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            // --- Modal and Form Handling ---
+            function openProjectModal(project = null) {
+                projectModalTitle.textContent = project ? `Edit Project: ${project.project_name}` : 'Add New Project';
+                let customerOptions = allCustomers.map(c => `<option value="${c.id}" ${project && project.customer_id == c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+
+                projectForm.querySelector('.modal-body').innerHTML = `
+                    <input type="hidden" name="id" value="${project ? project.id : ''}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label class="form-label required">Project Name</label><input type="text" name="projectName" class="form-control" value="${project ? project.project_name : ''}" required></div>
+                        <div class="col-md-6 mb-3"><label class="form-label required">Project Type</label><select name="projectType" class="form-select" required><option value="">Select Type</option><option value="new_mold" ${project && project.project_type == 'new_mold' ? 'selected' : ''}>New Mold</option><option value="repair_mold" ${project && project.project_type == 'repair_mold' ? 'selected' : ''}>Repair Mold</option><option value="part_making" ${project && project.project_type == 'part_making' ? 'selected' : ''}>Part Making</option></select></div>
+                        <div class="col-md-6 mb-3"><label class="form-label required">Customer</label><select name="customerId" class="form-select" required><option value="">Select Customer</option>${customerOptions}</select></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Model Name</label><input type="text" name="modelName" class="form-control" value="${project ? project.model_name || '' : ''}"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Part Name</label><input type="text" name="partName" class="form-control" value="${project ? project.part_name || '' : ''}"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Part Code</label><input type="text" name="partCode" class="form-control" value="${project ? project.part_code || '' : ''}"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label required">Start Date</label><input type="date" name="startDate" class="form-control" value="${project ? toInputDate(project.start_date) : ''}" required></div>
+                        <div class="col-md-6 mb-3"><label class="form-label required">Target Date</label><input type="date" name="targetDate" class="form-control" value="${project ? toInputDate(project.target_date) : ''}" required></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Part Image</label><input type="file" name="partImage" class="form-control"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Technical Drawing</label><input type="file" name="technicalDrawing" class="form-control"></div>
+                    </div>`;
+                projectModal.show();
+            }
+
+            btnAddProject.addEventListener('click', () => openProjectModal());
+
+            tableBody.addEventListener('click', e => {
+                const row = e.target.closest('tr');
+                if (!row) return;
+                const projectId = row.dataset.projectId;
+                const projectData = allProjects.find(p => p.id == projectId);
+
+                if (e.target.classList.contains('btn-edit')) {
+                    openProjectModal(projectData);
+                }
+                if (e.target.classList.contains('btn-delete')) {
+                    if (confirm(`Are you sure you want to delete project "${projectData.project_name}"?`)) {
+                        fetchWithAuth(`/api/projects/${projectData.id}`, { method: 'DELETE' }).then(res => {
+                            if (res.ok) loadInitialData();
+                            else alert('Delete failed');
+                        });
+                    }
+                }
+                if (e.target.classList.contains('btn-view')) {
+                    openReportModal(projectId);
+                }
+            });
+
+            projectForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                const formData = new FormData(projectForm);
+                const id = formData.get('id');
+                const url = id ? `/api/projects/${id}` : '/api/projects';
+                const method = id ? 'PUT' : 'POST';
+
+                try {
+                    const res = await fetchWithAuth(url, { method, body: formData });
+
+                    if (!res.ok) throw new Error('Save failed');
+                    projectModal.hide();
+                    loadInitialData();
+                } catch (err) {
+                    alert(err.message);
+                }
+            });
+
+            async function openReportModal(projectId) {
+                const res = await fetchWithAuth(`/api/projects/${projectId}`);
+                const data = await res.json();
+                const { project, tasks } = data;
+
+                // Cache tasks
+                const cachedProject = allProjects.find(p => p.id == projectId);
+                if (cachedProject) cachedProject.tasks = tasks;
+
+                document.getElementById('report-modal-content').innerHTML = `
+                    <div class="modal-header">
+                        <h5 class="modal-title">Project Report: ${project.project_name}</h5>
+                        <div>
+                            <button type="button" class="btn btn-primary btn-sm me-2" id="btn-print-report">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /><path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /><path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg>
+                                Print PDF
+                            </button>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                    </div>
+                    <div class="modal-body" id="gantt-chart-modal-container">
+                        <!-- Gantt Chart -->
+                    </div>`;
+
+                renderGanttChart(project, tasks, reportModalEl.querySelector('#gantt-chart-modal-container'));
+                setupPrintButton(project, tasks);
+                reportModal.show();
+            }
+
+            function renderGanttChart(project, tasks, container) {
+                if (!tasks || !project.start_date || !project.target_date) {
+                    container.innerHTML = '<div class="p-3 text-muted text-center">No task data or project dates defined.</div>';
+                    return;
+                }
+
+                const startDate = new Date(project.start_date);
+                const endDate = new Date(project.target_date);
+                endDate.setDate(endDate.getDate() + 1); // Inclusive
+                const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) || 1;
+
+                // Month Header
+                // (Logic simplified for modal, full logic duplicated in printProjectReport for clean separation)
+                let monthHeader = '<div class="d-flex w-100">';
+                let months = {};
+                for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+                    const monthYear = d.toLocaleString('th-TH', { month: 'short', year: 'numeric' });
+                    months[monthYear] = (months[monthYear] || 0) + 1;
+                }
+                Object.keys(months).forEach(monthYear => {
+                    const widthPct = (months[monthYear] / totalDays) * 100;
+                    monthHeader += `<div class="gantt-month text-center p-1" style="width: ${widthPct}%">${monthYear}</div>`;
+                });
+                monthHeader += '</div>';
+
+                // Tasks Layout
+                let tasksHtml = '';
+                tasks.forEach(task => {
+                    const taskStart = new Date(task.start_date || project.start_date);
+                    const taskEnd = new Date(task.end_date || project.target_date);
+
+                    const clampedStart = new Date(Math.max(startDate, taskStart));
+                    const clampedEnd = new Date(Math.min(endDate, taskEnd));
+                    clampedEnd.setDate(clampedEnd.getDate() + 1);
+
+                    const duration = Math.max(1, Math.ceil((clampedEnd - clampedStart) / (1000 * 60 * 60 * 24)));
+                    const offset = Math.max(0, Math.ceil((clampedStart - startDate) / (1000 * 60 * 60 * 24)));
+
+                    const leftPct = (offset / totalDays) * 100;
+                    const widthPct = (duration / totalDays) * 100;
+
+                    const statusColors = { 'completed': 'bg-green', 'in_progress': 'bg-blue', 'pending': 'bg-secondary' };
+                    const colorClass = statusColors[task.status] || 'bg-secondary';
+
+                    tasksHtml += `
+                        <div class="row g-0 align-items-center mb-2 task-row p-1 rounded" style="cursor: pointer;" data-task-id="${task.id}" data-project-id="${project.id}">
+                            <div class="col-3 text-truncate pe-3 gantt-row-label" title="${task.task_name}">
+                                ${task.task_name}
+                            </div>
+                            <div class="col-9">
+                                <div class="progress-track position-relative w-100">
+                                    <div class="gantt-bar ${colorClass} position-absolute" role="progressbar" 
+                                        style="left: ${leftPct}%; width: ${widthPct}%;"
+                                        title="${task.task_name} (${task.progress}%)">
+                                        <div class="gantt-progress" style="width: ${task.progress}%;"></div>
+                                        <span class="position-absolute w-100 text-center text-white small" style="z-index:1;">${task.progress}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Header for Print View
+                const printHeader = `
+                    <div class="print-only-header">
+                        <h1>Project Timeline Report</h1>
+                        <div class="row mb-3">
+                            <div class="col-6"><strong>Project:</strong> ${project.project_name}</div>
+                            <div class="col-6"><strong>Customer:</strong> ${project.customer_name || '-'}</div>
+                            <div class="col-6"><strong>Duration:</strong> ${new Date(project.start_date).toLocaleDateString()} - ${new Date(project.target_date).toLocaleDateString()}</div>
+                            <div class="col-6"><strong>Status:</strong> ${project.status} (${project.progress}%)</div>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML = `
+                    ${printHeader}
+                    <div class="gantt-wrapper">
+                        <div class="gantt-header mb-2">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 25%;" class="pe-3 ps-2 font-weight-bold">Task Name</div>
+                                <div style="width: 75%;" class="border-start border-white-50 ps-1">${monthHeader}</div>
+                            </div>
+                        </div>
+                        <div class="gantt-body">
+                            ${tasksHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // --- Dedicated Print Function ---
+            // Attach event listener after rendering
+            function setupPrintButton(project, tasks) {
+                const btn = document.getElementById('btn-print-report');
+                if (btn) btn.onclick = () => printProjectReport(project, tasks);
+            }
+
+            function printProjectReport(project, tasks) {
+                const container = document.getElementById('print-container');
+                if (!container) return;
+
+                const startDate = new Date(project.start_date);
+                const endDate = new Date(project.target_date);
+                endDate.setDate(endDate.getDate() + 1);
+                const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) || 1;
+
+                // Build Month Header for Print
+                let monthCells = '';
+                let months = {};
+                for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+                    const monthYear = d.toLocaleString('th-TH', { month: 'short', year: 'numeric' });
+                    months[monthYear] = (months[monthYear] || 0) + 1;
+                }
+
+                // We create a table header row
+                let tableHeader = '<tr><th class="task-name">Task Name</th><th class="w-100 p-0"><div style="display:flex; width:100%;">';
+                Object.keys(months).forEach(monthYear => {
+                    const widthPct = (months[monthYear] / totalDays) * 100;
+                    tableHeader += `<div style="width: ${widthPct}%; border-right: 1px solid #ddd; text-align: center; font-size: 10px; padding: 4px 0;">${monthYear}</div>`;
+                });
+                tableHeader += '</div></th></tr>';
+
+                // Build Body
+                let tableRows = '';
+                tasks.forEach(task => {
+                    const taskStart = new Date(task.start_date || project.start_date);
+                    const taskEnd = new Date(task.end_date || project.target_date);
+                    const clampedStart = new Date(Math.max(startDate, taskStart));
+                    const clampedEnd = new Date(Math.min(endDate, taskEnd));
+                    clampedEnd.setDate(clampedEnd.getDate() + 1);
+
+                    const offset = Math.max(0, Math.ceil((clampedStart - startDate) / (1000 * 60 * 60 * 24)));
+                    const duration = Math.max(1, Math.ceil((clampedEnd - clampedStart) / (1000 * 60 * 60 * 24)));
+
+                    const leftPct = (offset / totalDays) * 100;
+                    const widthPct = (duration / totalDays) * 100;
+
+                    const statusColors = { 'completed': 'bg-green', 'in_progress': 'bg-blue', 'pending': 'bg-secondary' };
+                    const colorClass = statusColors[task.status] || 'bg-secondary';
+
+                    tableRows += `
+                        <tr>
+                            <td class="task-name">${task.task_name}</td>
+                            <td style="padding: 10px;">
+                                <div class="print-bar-container">
+                                    <div class="print-bar ${colorClass}" style="left: ${leftPct}%; width: ${widthPct}%;">
+                                        ${task.progress}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                // Build Full Report HTML
+                const printHtml = `
+                    <div class="print-header">
+                         <h1>Project Timeline Report</h1>
+                         <div class="print-info-grid">
+                            <div><strong>Project Name:</strong> ${project.project_name}</div>
+                            <div><strong>Customer:</strong> ${project.customer_name || '-'}</div>
+                            <div><strong>Type:</strong> ${getType(project.project_type)}</div>
+                            <div><strong>Duration:</strong> ${formatDate(project.start_date)} - ${formatDate(project.target_date)}</div>
+                            <div><strong>Status:</strong> ${project.status} (${project.progress}%)</div>
+                            <div><strong>Print Date:</strong> ${new Date().toLocaleDateString('th-TH')}</div>
+                         </div>
+                    </div>
+                    
+                    <table class="print-gantt-table">
+                        <thead>${tableHeader}</thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                    
+                    <div style="margin-top: 30px; font-size: 10px; color: #666; text-align: right; border-top: 1px solid #ccc; padding-top: 5px;">
+                        Smart Factory Management System
+                    </div>
+                `;
+
+                container.innerHTML = printHtml;
+                window.print();
+            }
+
+            // --- Task Update Modal ---
+            document.body.addEventListener('click', e => {
+                const taskRow = e.target.closest('.task-row');
+                if (taskRow) {
+                    const taskId = taskRow.dataset.taskId;
+                    const projectId = taskRow.dataset.projectId;
+                    openTaskModal(projectId, taskId);
+                }
+            });
+
+            function openTaskModal(projectId, taskId) {
+                const project = allProjects.find(p => p.id == projectId);
+                const task = project.tasks.find(t => t.id == taskId);
+
+                if (task) {
+                    document.getElementById('task-update-modal-content').innerHTML = `
+                        <form id="task-update-form">
+                            <div class="modal-header"><h5 class="modal-title">Update Task</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                            <div class="modal-body">
+                                <input type="hidden" name="taskId" value="${task.id}">
+                                <input type="hidden" name="projectId" value="${projectId}">
+                                <div class="mb-3"><label class="form-label">Task Name</label><input type="text" class="form-control" value="${task.task_name}" readonly></div>
+                                <div class="mb-3"><label class="form-label">Status</label><select name="status" class="form-select"><option value="pending" ${task.status == 'pending' ? 'selected' : ''}>Pending</option><option value="in_progress" ${task.status == 'in_progress' ? 'selected' : ''}>In Progress</option><option value="completed" ${task.status == 'completed' ? 'selected' : ''}>Completed</option></select></div>
+                                <div class="mb-3"><label class="form-label">Progress (<span id="progress-value">${task.progress}</span>%)</label><input type="range" name="progress" class="form-range" min="0" max="100" value="${task.progress}"></div>
+                                <div class="row"><div class="col-6"><label class="form-label">Start Date</label><input type="date" name="start_date" class="form-control" value="${toInputDate(task.start_date)}"></div><div class="col-6"><label class="form-label">End Date</label><input type="date" name="end_date" class="form-control" value="${toInputDate(task.end_date)}"></div></div>
+                            </div>
+                            <div class="modal-footer"><button type="button" class="btn me-auto" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Update Task</button></div>
+                        </form>`;
+
+                    const form = document.getElementById('task-update-form');
+                    form.elements.progress.addEventListener('input', e => document.getElementById('progress-value').textContent = e.target.value);
+                    form.addEventListener('submit', updateTask);
+                    taskUpdateModal.show();
+                }
+            }
+
+            async function updateTask(e) {
+                e.preventDefault();
+                const form = e.target;
+                const formData = new FormData(form);
+                const taskId = formData.get('taskId');
+                const data = {
+                    project_id: formData.get('projectId'),
+                    status: formData.get('status'),
+                    progress: parseInt(formData.get('progress')),
+                    start_date: formData.get('start_date'),
+                    end_date: formData.get('end_date'),
+                };
+
+                try {
+                    const res = await fetchWithAuth(`/api/projects/tasks/${taskId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    if (!res.ok) throw new Error('Task update failed');
+                    taskUpdateModal.hide();
+
+                    // 1. Refresh main list (this resets allProjects)
+                    await loadInitialData();
+
+                    // 2. Refresh the specific project tasks so the cache is valid for openTaskModal
+                    const projectId = data.project_id;
+                    const projectRes = await fetchWithAuth(`/api/projects/${projectId}`);
+                    if (projectRes.ok) {
+                        const projectData = await projectRes.json();
+                        const cachedProject = allProjects.find(p => p.id == projectId);
+                        if (cachedProject) {
+                            cachedProject.tasks = projectData.tasks;
+
+                            // 3. Re-render Gantt if visible
+                            if (reportModalEl.classList.contains('show')) {
+                                renderGanttChart(projectData.project, projectData.tasks, reportModalEl.querySelector('#gantt-chart-modal-container'));
+                            }
+                        }
+                    }
+
+                } catch (err) {
+                    alert(err.message);
+                }
+            }
+
+            // --- Initial Load ---
+            loadInitialData();
+        });
+    </script>
+    <!-- Dedicated Hidden Print Container -->
+    <div id="print-container" style="display: none;"></div>
+</body>
+
+</html>

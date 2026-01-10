@@ -1,0 +1,125 @@
+<!doctype html>
+<!-- <html lang="th"> -->
+<html lang="th" data-bs-theme="dark"></html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>จัดการ Roles - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg">
+            <%- include('partials/sidebar.ejs', { accessiblePages: accessiblePages }) %>
+        </aside>
+
+        <div class="page-wrapper">
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="page-header d-print-none">
+                        <h2 class="page-title">จัดการ Roles ผู้ใช้งาน</h2>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">เพิ่ม Role ใหม่</label>
+                                <div class="input-group">
+                                    <input type="text" id="new-role-name" class="form-control" placeholder="เช่น 'Quality Control', 'Operator', 'Manager'">
+                                    <button id="add-role-btn" class="btn btn-primary" type="button">เพิ่ม</button>
+                                </div>
+                                <div id="alert-container" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table card-table table-vcenter text-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>ชื่อ Role</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="roles-table-body">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const rolesTableBody = document.getElementById('roles-table-body');
+            const newRoleNameInput = document.getElementById('new-role-name');
+            const addRoleBtn = document.getElementById('add-role-btn');
+            const alertContainer = document.getElementById('alert-container');
+
+            // ฟังก์ชันสำหรับดึงและแสดงข้อมูล Roles
+            async function fetchRoles() {
+                try {
+                    const response = await fetch('/api/roles');
+                    if (!response.ok) throw new Error('Failed to fetch roles');
+                    
+                    const roles = await response.json();
+                    rolesTableBody.innerHTML = ''; // เคลียร์ตารางเก่า
+                    roles.forEach(role => {
+                        const row = `<tr>
+                                        <td><span class="text-muted">${role.id}</span></td>
+                                        <td>${role.name}</td>
+                                     </tr>`;
+                        rolesTableBody.innerHTML += row;
+                    });
+                } catch (error) {
+                    console.error('Error fetching roles:', error);
+                }
+            }
+
+            // ฟังก์ชันสำหรับเพิ่ม Role ใหม่
+            async function addRole() {
+                const roleName = newRoleNameInput.value.trim();
+                if (!roleName) {
+                    showAlert('กรุณากรอกชื่อ Role', 'danger');
+                    return;
+                };
+
+                try {
+                    const response = await fetch('/api/roles', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: roleName })
+                    });
+                    
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        newRoleNameInput.value = '';
+                        showAlert('เพิ่ม Role สำเร็จแล้ว', 'success');
+                        fetchRoles(); // โหลดข้อมูลใหม่
+                    } else {
+                        showAlert(`เกิดข้อผิดพลาด: ${result.error}`, 'danger');
+                    }
+                } catch (error) {
+                    console.error('Error adding role:', error);
+                    showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'danger');
+                }
+            }
+
+            function showAlert(message, type = 'success') {
+                const alertHtml = `<div class="alert alert-${type}" role="alert">${message}</div>`;
+                alertContainer.innerHTML = alertHtml;
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 3000);
+            }
+
+            addRoleBtn.addEventListener('click', addRole);
+            
+            // ดึงข้อมูล Role ครั้งแรกเมื่อหน้าเว็บโหลดเสร็จ
+            fetchRoles();
+        });
+    </script>
+</body>
+</html>

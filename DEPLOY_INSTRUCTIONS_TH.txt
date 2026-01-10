@@ -1,0 +1,94 @@
+วิธีนำโปรเจกต์ Smart Factory ไปติดตั้งบนเครื่องใหม่ด้วย Docker
+=============================================================
+
+ทำตามขั้นตอนนี้เพื่อโคลนโปรเจกต์และรันบนเครื่อง Server หรือ PC เครื่องใหม่ได้ทันที
+
+1. สิ่งที่ต้องมีในเครื่องปลายทาง (Prerequisites)
+-----------------------------------------------
+1.  **Git**: ใช้ดาวน์โหลดโค้ด [ดาวน์โหลด Git](https://git-scm.com/downloads)
+2.  **Docker Desktop** (สำหรับ Windows/Mac) หรือ **Docker Engine** (สำหรับ Linux) [ดาวน์โหลด Docker](https://www.docker.com/products/docker-desktop)
+   *   *ตรวจสอบสสถานะ:* เปิด Terminal แล้วพิมพ์ `docker --version` ต้องขึ้นเลขเวอร์ชัน
+
+2. ขั้นตอนการติดตั้ง (Installation)
+----------------------------------
+
+### 2.1 โคลนโปรเจกต์ (Clone Repo)
+เปิด Terminal หรือ CMD ในโฟลเดอร์ที่ต้องการเก็บงาน แล้วคำสั่ง:
+
+```bash
+git clone <URL_GIT_REPOSITORY_ของคุณ>
+cd smart-factory-tabler
+```
+*(เปลี่ยน `<URL_GIT_REPOSITORY_ของคุณ>` เป็นลิงก์ GitHub/GitLab ที่คุณสร้างไว้ตอนก่อนหน้า)*
+
+### 2.2 ตั้งค่า Environment (สำคัญ!)
+สร้างไฟล์ `.env` ขึ้นมาใหม่ในโฟลเดอร์โปรเจกต์ (หรือ copy จาก `.env.example` ถ้ามี) และใส่ค่าตั้งต้นตามนี้:
+
+**ไฟล์: `.env`**
+```env
+# ตั้งรหัสความปลอดภัยสำหรับ Session Login (เปลี่ยนได้ตามใจชอบ)
+SESSION_SECRET=my_secure_super_secret_key_2025
+
+# ตั้งค่า Timezone
+TZ=Asia/Bangkok
+PGTZ=Asia/Bangkok
+
+# Database URL สำหรับเชื่อมต่อภายใน Docker (ห้ามเปลี่ยน Hostname 'postgres')
+DATABASE_URL=postgres://postgres:postgres123@postgres:5432/smart_factory
+
+# Port การทำงาน
+PORT=3000
+```
+
+3. สั่งรันโปรเจกต์ (Run Service)
+--------------------------------
+ใน Terminal (ที่อยู่ในโฟลเดอร์โปรเจกต์) ให้สั่งคำสั่งเดียวเพื่อให้ระบบทำงานทั้งหมด:
+
+```bash
+docker compose up -d --build
+```
+
+*   **-d**: Run in background (ทำงานเบื้องหลัง ไม่ต้องเปิดหน้าจอค้างไว้)
+*   **--build**: บังคับสร้าง Image ใหม่ทุกครั้งเพื่อให้มั่นใจว่าเป็นโค้ดล่าสุด
+
+### รอสักครู่...
+ครั้งแรกจะใช้เวลา 3-10 นาทีในการดาวน์โหลดและติดตั้ง Database, Node.js, และ Python
+
+4. ตรวจสอบสถานะ
+---------------
+พิมพ์คำสั่งนี้เพื่อดูว่าทุกอย่างเขียว (Running) หรือไม่:
+
+```bash
+docker compose ps
+```
+
+คุณควรเห็น 3 services รันอยู่:
+1.  `smart_factory_postgres` (Port 5433->5432)
+2.  `smart_factory_web` (Port 3000->3000)
+3.  `smart_factory_plc` (Port 5000->5000)
+
+5. เข้าใช้งาน (Access)
+----------------------
+เปิด Google Chrome หรือ Browser แล้วเข้า:
+
+-   **หน้าหลัก (Web Application):** `http://localhost:3000`
+-   **เข้าระบบครั้งแรก:** 
+    -   User: `admin@local`
+    -   Pass: `admin`
+
+6. การอัปเดตโค้ดในอนาคต (Update)
+--------------------------------
+เมื่อคุณมีการแก้โค้ดและ Push ขึ้น Git ไปแล้ว และต้องการมาอัปเดตที่เครื่อง Server นี้:
+
+```bash
+git pull origin main
+docker compose up -d --build
+```
+(ระบบจะดึงโค้ดใหม่ และสร้าง Container ใหม่ให้โดยอัตโนมัติ ข้อมูลใน Database จะ **ไม่หาย** เพราะถูกเก็บแยกไว้ใน Volume)
+
+7. การลบข้อมูลทั้งหมด (Reset Factory) - ทำเมื่อจำเป็นเท่านั้น!
+-----------------------------------------------------------
+ถ้าต้องการลบ Data เริ่มต้นใหม่หมด (ข้อมูลหายเกลี้ยง):
+```bash
+docker compose down -v
+```

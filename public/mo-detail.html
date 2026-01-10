@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>รายละเอียดใบสั่งผลิต - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+        </aside>
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">รายละเอียดใบสั่งผลิต</h2>
+                            <h3 class="text-muted" id="mo-number-header">Loading...</h3>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none btn-list">
+                            <div id="action-buttons" class="d-inline-block"></div>
+                            <a href="/manufacturing-orders.html" class="btn btn-outline-secondary">กลับ</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="row g-4">
+                        <div class="col-lg-4">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h3 class="card-title">ข้อมูลใบสั่งผลิต</h3>
+                                </div>
+                                <div class="card-body" id="mo-details-card">
+                                    <p class="text-center">กำลังโหลด...</p>
+                                </div>
+                            </div>
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h3 class="card-title">ความคืบหน้าการผลิต</h3>
+                                </div>
+                                <div class="card-body" id="progress-details-card">
+                                    <p class="text-center">กำลังโหลด...</p>
+                                </div>
+                            </div>
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h3 class="card-title">ข้อมูลแม่พิมพ์</h3>
+                                </div>
+                                <div class="card-body" id="mold-details-card">
+                                    <p class="text-center">กำลังโหลด...</p>
+                                </div>
+                            </div>
+                            <div class="card mb-4" id="planning-card" style="display: none;">
+                                <div class="card-header">
+                                    <h3 class="card-title">วางแผนการผลิต</h3>
+                                </div>
+                                <div class="card-body">
+                                    <form id="planning-form">
+                                        <div class="mb-3">
+                                            <label class="form-label">เลือกเครื่องจักร</label>
+                                            <select class="form-select" id="machine-select" required></select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">เวลาเริ่มตามแผน</label>
+                                            <input type="text" id="planned-start-time" class="form-control" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">เวลาเสร็จตามแผน</label>
+                                            <input type="text" id="planned-end-time" class="form-control" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary w-100">บันทึกแผน</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">ผลการผลิตจริง</h3>
+                                </div>
+                                <div class="card-body" id="actual-details-card">
+                                    <p>ยังไม่เริ่มการผลิต</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">รายการวัตถุดิบที่ต้องใช้</h3>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter card-table">
+                                        <thead>
+                                            <tr>
+                                                <th>รหัสวัตถุดิบ</th>
+                                                <th>ชื่อวัตถุดิบ</th>
+                                                <th class="text-end">อัตราส่วน (%)</th>
+                                                <th class="text-end">ปริมาณที่ต้องใช้ (kg)</th>
+                                                <th class="text-end">สต็อกปัจจุบัน (kg)</th>
+                                                <th>สถานะสต็อก</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="materials-table-body">
+                                            <tr>
+                                                <td colspan="6" class="text-center">กำลังโหลด...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="card mt-4">
+                                <div class="card-header">
+                                    <h3 class="card-title">บันทึกผลผลิตประจำวัน</h3>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter card-table">
+                                        <thead>
+                                            <tr>
+                                                <th>วันที่</th>
+                                                <th>กะ</th>
+                                                <th>ผู้บันทึก</th>
+                                                <th class="text-end">งานดี</th>
+                                                <th class="text-end">งานเสีย</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="production-records-table-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card-footer" id="record-button-footer" style="display: none;">
+                                    <a href="#" id="add-record-btn" class="btn btn-primary w-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                            viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                            <path d="M12 5l0 14" />
+                                            <path d="M5 12l14 0" />
+                                        </svg>
+                                        บันทึกผลผลิตประจำวัน
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+
+    <script src="/js/auth-client.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // สคริปต์นี้สำหรับโหลด Sidebar และ User Info
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            // เรียกใช้งานฟังก์ชัน
+            loadSidebar();
+            loadUserInfo();
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const moId = urlParams.get('id');
+            if (!moId) {
+                document.body.innerHTML = '<h1>ไม่พบ ID ของใบสั่งผลิต</h1>';
+                return;
+            }
+
+            const planningForm = document.getElementById('planning-form');
+            const machineSelect = document.getElementById('machine-select');
+
+            let startTimePicker, endTimePicker;
+            if (window.flatpickr) {
+                startTimePicker = flatpickr("#planned-start-time", { enableTime: true, dateFormat: "Y-m-d H:i" });
+                endTimePicker = flatpickr("#planned-end-time", { enableTime: true, dateFormat: "Y-m-d H:i" });
+            }
+
+            function fetchAndRenderData() {
+                // === จุดที่แก้ไข 5: เปลี่ยน fetch เป็น fetchWithAuth ===
+                fetchWithAuth(`/api/manufacturing-orders/${moId}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Failed to fetch MO details');
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("--- DEBUGGING: Data from API ---");
+                        console.log(data);
+                        console.log("---------------------------------");
+
+                        // The backend returns { data: { details: ..., materials: ... } }
+                        // Ensure we are accessing data.data correctly
+                        const moData = data.data;
+
+                        if (!moData) throw new Error('Invalid data format received');
+
+                        renderPage(moData.details, moData.materials);
+                        fetchProductionRecords();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching MO details:', error);
+                        document.getElementById('mo-details-card').innerHTML = '<p class="text-danger">เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message + '</p>';
+                    });
+            }
+
+            function fetchProductionRecords() {
+                const recordsTbody = document.getElementById('production-records-table-body');
+                // === จุดที่แก้ไข 5: เปลี่ยน fetch เป็น fetchWithAuth ===
+                fetchWithAuth(`/api/production-records/by-mo/${moId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        recordsTbody.innerHTML = '';
+                        if (data.data && data.data.length > 0) {
+                            data.data.forEach(rec => {
+                                recordsTbody.innerHTML += `
+                                    <tr>
+                                        <td>${new Date(rec.record_date).toLocaleDateString('th-TH')}</td>
+                                        <td>${rec.shift === 'day' ? 'กะเช้า' : 'กะดึก'}</td>
+                                        <td>${rec.operator_name || '-'}</td>
+                                        <td class="text-end text-success">${rec.good_quantity.toLocaleString()}</td>
+                                        <td class="text-end text-danger">${rec.waste_quantity.toLocaleString()}</td>
+                                    </tr>
+                                `;
+                            });
+                        } else {
+                            recordsTbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">ยังไม่มีการบันทึกผลผลิต</td></tr>';
+                        }
+                    })
+                    .catch(err => console.error(err));
+            }
+
+            function renderPage(details, materials) {
+                const formatDate = (d) => d ? new Date(d).toLocaleDateString('th-TH') : '-';
+                const formatDateTime = (d) => d ? new Date(d).toLocaleString('th-TH') : '-';
+                const formatNumber = (n, digits = 3) => n != null ? n.toLocaleString('th-TH', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '0.000';
+
+                document.getElementById('mo-number-header').textContent = details.mo_number;
+
+                document.getElementById('mo-details-card').innerHTML = `
+                    <p><strong>สินค้าที่ผลิต:</strong> ${details.item_name} (${details.item_code})</p>
+                    <p><strong>จำนวน:</strong> ${details.quantity_to_produce.toLocaleString('th-TH')} หน่วย</p>
+                    <p><strong>อ้างอิงใบสั่งขาย:</strong> ${details.so_number || '-'}</p>
+                    <p><strong>วันที่ต้องการเสร็จ:</strong> ${formatDate(details.due_date)}</p>
+                    <p><strong>สถานะ:</strong> <span class="badge" id="status-badge"></span></p>
+                    <hr>
+                    <p><strong>เครื่องจักรตามแผน:</strong> <span id="planned-machine">${details.machine_id ? 'Loading...' : 'ยังไม่ได้วางแผน'}</span></p>
+                    <p><strong>เวลาเริ่มตามแผน:</strong> ${details.planned_start_time ? formatDateTime(details.planned_start_time) : '-'}</p>
+                    <p><strong>เวลาเสร็จตามแผน:</strong> ${details.planned_end_time ? formatDateTime(details.planned_end_time) : '-'}</p>
+                `;
+
+                const progressCard = document.getElementById('progress-details-card');
+                const target = details.quantity_to_produce || 0;
+                const actual = details.total_good_quantity || 0;
+                let progress = 0;
+                if (target > 0) {
+                    progress = (actual / target) * 100;
+                }
+                if (details.status === 'completed') {
+                    progress = 100;
+                }
+
+                progressCard.innerHTML = `
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="subheader me-2">${Math.min(progress, 100).toFixed(0)}%</div>
+                        <div class="progress progress-lg w-100">
+                            <div class="progress-bar bg-primary" style="width: ${Math.min(progress, 100)}%" role="progressbar"></div>
+                        </div>
+                    </div>
+                    <div class="text-muted text-center">
+                        ${actual.toLocaleString('th-TH')} / ${target.toLocaleString('th-TH')} หน่วย
+                    </div>
+                `;
+
+                document.getElementById('mold-details-card').innerHTML = `
+                    <p><strong>รหัสแม่พิมพ์:</strong> ${details.mold_code || 'N/A'}</p>
+                    <p><strong>ชื่อแม่พิมพ์:</strong> ${details.mold_name || 'N/A'}</p>
+                `;
+
+                const materialsTbody = document.getElementById('materials-table-body');
+                materialsTbody.innerHTML = '';
+                if (materials) {
+                    materials.forEach(mat => {
+                        const stockStatus = (mat.current_stock_kg || 0) >= mat.required_kg;
+                        materialsTbody.innerHTML += `
+                            <tr>
+                                <td>${mat.material_code}</td>
+                                <td>${mat.material_name}</td>
+                                <td class="text-end">${(mat.mixing_ratio || 0).toFixed(2)}%</td>
+                                <td class="text-end fw-bold">${formatNumber(mat.required_kg)}</td>
+                                <td class="text-end">${formatNumber(mat.current_stock_kg)}</td>
+                                <td><span class="badge bg-${stockStatus ? 'success' : 'danger'}">${stockStatus ? 'เพียงพอ' : 'ไม่เพียงพอ'}</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                const actualCard = document.getElementById('actual-details-card');
+                if (details.actual_start_time) {
+                    actualCard.innerHTML = `
+                        <p><strong>เวลาเริ่มจริง:</strong> ${formatDateTime(details.actual_start_time)}</p>
+                        <p><strong>เวลาเสร็จจริง:</strong> ${formatDateTime(details.actual_end_time)}</p>
+                    `;
+                } else {
+                    actualCard.innerHTML = `<p>ยังไม่เริ่มการผลิต</p>`;
+                }
+
+                renderActionButtons(details);
+            }
+
+            async function renderActionButtons(details) {
+                const buttonContainer = document.getElementById('action-buttons');
+                const statusBadge = document.getElementById('status-badge');
+                const planningCard = document.getElementById('planning-card');
+                const recordButtonFooter = document.getElementById('record-button-footer');
+                const addRecordBtn = document.getElementById('add-record-btn');
+                buttonContainer.innerHTML = '';
+
+                const statusMap = {
+                    'pending': { color: 'secondary', text: 'รอผลิต' },
+                    'in_progress': { color: 'primary', text: 'กำลังผลิต' },
+                    'completed': { color: 'success', text: 'ผลิตเสร็จแล้ว' },
+                    'cancelled': { color: 'danger', text: 'ยกเลิก' }
+                };
+                statusBadge.className = `badge bg-${statusMap[details.status]?.color || 'secondary'}`;
+                statusBadge.textContent = statusMap[details.status]?.text || details.status;
+
+                if (details.status === 'pending' && !details.machine_id) {
+                    planningCard.style.display = 'block';
+                    const machines = await fetchMachines();
+                    populateMachineSelect(machines, details.machine_id);
+                } else {
+                    planningCard.style.display = 'none';
+                }
+
+                if (details.machine_id) {
+                    const machines = await fetchMachines();
+                    const machine = machines.find(m => m.id === details.machine_id);
+                    document.getElementById('planned-machine').textContent = machine ? machine.machine_name : 'N/A';
+                }
+
+                if (details.status === 'pending' && details.machine_id) {
+                    const startButton = document.createElement('button');
+                    startButton.className = 'btn btn-primary';
+                    startButton.textContent = 'เริ่มการผลิต';
+                    startButton.onclick = () => updateStatus('in_progress');
+                    buttonContainer.appendChild(startButton);
+                } else if (details.status === 'in_progress') {
+                    const completeButton = document.createElement('button');
+                    completeButton.className = 'btn btn-success';
+                    completeButton.textContent = 'เสร็จสิ้นการผลิต';
+                    completeButton.onclick = () => updateStatus('completed');
+                    buttonContainer.appendChild(completeButton);
+                }
+
+                if (details.status === 'in_progress') {
+                    recordButtonFooter.style.display = 'block';
+                    addRecordBtn.href = `/record-production.html?mo_id=${moId}`;
+                } else {
+                    recordButtonFooter.style.display = 'none';
+                }
+            }
+
+            async function fetchMachines() {
+                try {
+                    const response = await fetchWithAuth('/api/machines');
+                    const data = await response.json();
+                    return data.data || [];
+                } catch (e) {
+                    console.error("Error fetching machines:", e);
+                    return [];
+                }
+            }
+
+            function populateMachineSelect(machines, selectedId) {
+                machineSelect.innerHTML = '<option value="">-- เลือกเครื่องจักร --</option>';
+                machines.forEach(m => {
+                    const option = new Option(`${m.machine_code} - ${m.machine_name}`, m.id);
+                    if (m.id === selectedId) option.selected = true;
+                    machineSelect.add(option);
+                });
+            }
+
+            planningForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const scheduleData = {
+                    machine_id: machineSelect.value,
+                    planned_start_time: startTimePicker ? startTimePicker.input.value : document.getElementById('planned-start-time').value,
+                    planned_end_time: endTimePicker ? endTimePicker.input.value : document.getElementById('planned-end-time').value
+                };
+
+                fetchWithAuth(`/api/manufacturing-orders/${moId}/schedule`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(scheduleData)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.message) {
+                            alert(data.message);
+                            fetchAndRenderData();
+                        } else throw new Error(data.error || 'Unknown error');
+                    })
+                    .catch(error => alert(`เกิดข้อผิดพลาด: ${error.message}`));
+            });
+
+            function updateStatus(newStatus) {
+                const msgs = {
+                    'in_progress': 'คุณต้องการเริ่มการผลิตใช่หรือไม่?',
+                    'completed': 'คุณต้องการยืนยันว่าการผลิตเสร็จสิ้นแล้วใช่หรือไม่? การกระทำนี้จะทำการอัปเดตสต็อกและไม่สามารถย้อนกลับได้'
+                };
+                if (!confirm(msgs[newStatus])) return;
+
+                fetchWithAuth(`/api/manufacturing-orders/${moId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newStatus: newStatus })
+                })
+                    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                    .then(({ ok, data }) => {
+                        if (ok) {
+                            alert(data.message);
+                            fetchAndRenderData();
+                        } else throw new Error(data.error);
+                    })
+                    .catch(error => alert(`เกิดข้อผิดพลาด: ${error.message}`));
+            }
+
+            fetchAndRenderData();
+        });
+    </script>
+</body>
+
+</html>

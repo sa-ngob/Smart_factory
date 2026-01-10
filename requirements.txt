@@ -1,0 +1,7 @@
+Flask
+pymodbus
+flask_sqlalchemy
+requests
+flask-cors
+psycopg2-binary
+python-dotenv

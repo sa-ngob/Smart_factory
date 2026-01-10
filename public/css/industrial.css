@@ -1,0 +1,140 @@
+/* Industrial Theme - Dark Mode & High Contrast */
+:root {
+    --industrial-bg: #0f172a;       /* Dark Slate */
+    --industrial-card: #1e293b;     /* Lighter Slate */
+    --industrial-text: #e2e8f0;     /* Light Gray */
+    --industrial-accent: #0ea5e9;   /* Sky Blue */
+    --industrial-success: #10b981;  /* Emerald */
+    --industrial-warning: #f59e0b;  /* Amber */
+    --industrial-danger: #ef4444;   /* Red */
+    --industrial-border: #334155;   /* Slate Border */
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+body {
+    background-color: var(--industrial-bg);
+    color: var(--industrial-text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Card Styling - Glassmorphism & Industrial */
+.card {
+    background: var(--industrial-card);
+    border: 1px solid var(--industrial-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(10px);
+}
+
+.card-header {
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--industrial-border);
+    color: var(--industrial-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.card-title {
+    color: var(--industrial-accent);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    color: #fff;
+    font-weight: 700;
+}
+
+.text-muted {
+    color: #94a3b8 !important;
+}
+
+/* Tables */
+.table {
+    color: var(--industrial-text);
+}
+
+.table thead th {
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--industrial-accent);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--industrial-border);
+}
+
+.table td {
+    border-bottom: 1px solid var(--industrial-border);
+}
+
+.table-vcenter td, .table-vcenter th {
+    vertical-align: middle;
+}
+
+/* Status Indicators */
+.status-dot {
+    height: 10px;
+    width: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.status-running { background-color: var(--industrial-success); box-shadow: 0 0 10px var(--industrial-success); }
+.status-idle { background-color: var(--industrial-warning); box-shadow: 0 0 10px var(--industrial-warning); }
+.status-down { background-color: var(--industrial-danger); box-shadow: 0 0 10px var(--industrial-danger); }
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--industrial-accent);
+    border-color: var(--industrial-accent);
+    color: #fff;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.btn-primary:hover {
+    background-color: #0284c7;
+    border-color: #0284c7;
+}
+
+/* Navbar */
+.navbar {
+    background: var(--industrial-card);
+    border-bottom: 1px solid var(--industrial-border);
+}
+
+.navbar-brand {
+    color: var(--industrial-accent) !important;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+}
+
+.nav-link {
+    color: var(--industrial-text);
+}
+
+.nav-link:hover, .nav-link.active {
+    color: var(--industrial-accent);
+}
+
+/* Dashboard Specifics */
+.value-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.unit-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+}
+
+/* Sidebar */
+.navbar-vertical {
+    background: var(--industrial-card);
+    border-right: 1px solid var(--industrial-border);
+}

@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>รายการใบสั่งผลิต (MO) - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+    </aside>   
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <h2 class="page-title">รายการใบสั่งผลิต (Manufacturing Orders)</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ MO</th>
+                                        <th>สินค้า</th>
+                                        <th class="text-end">เป้าหมายการผลิต</th>
+                                        <th style="width: 20%;">ความคืบหน้า</th>
+                                        <th>สถานะ</th>
+                                        <th>วันที่ต้องการเสร็จ</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mo-table-body">
+                                    <tr><td colspan="7" class="text-center">กำลังโหลดข้อมูล...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer text-end">
+                            <small class="text-muted" id="last-updated">Updating...</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+          // === เพิ่มโค้ดส่วนนี้เข้าไป ===
+        fetch('api/sidebar')
+            .then(res => res.text())
+            .then(data => {
+                document.getElementById('sidebar').innerHTML = data;
+                
+                // --- จุดสำคัญ: กำหนดให้เมนูของหน้านี้เป็น Active ---
+                // ค้นหาลิงก์ที่ตรงกับหน้านี้ (เช่น /items.html)
+                const currentLink = document.querySelector('a.nav-link[href="/items.html"]');
+                if (currentLink) {
+                    // เพิ่ม class 'active' ให้กับ li ที่เป็น parent ของลิงก์นั้น
+                    currentLink.parentElement.classList.add('active');
+                }
+            });
+        // === สิ้นสุดส่วนที่เพิ่ม ===
+            const tbody = document.getElementById('mo-table-body');
+            const lastUpdatedSpan = document.getElementById('last-updated');
+
+            // === จุดที่แก้ไข 2: สร้างฟังก์ชันสำหรับดึงและแสดงข้อมูล ===
+            function fetchAndUpdateTable() {
+                fetch('/api/manufacturing-orders')
+                    .then(response => response.json())
+                    .then(data => {
+                        tbody.innerHTML = ''; // Clear existing rows
+                        if (data.data && data.data.length > 0) {
+                            data.data.forEach(mo => {
+                                const formatDate = (d) => d ? new Date(d).toLocaleDateString('th-TH') : '-';
+                                const formatNumber = (n) => n ? n.toLocaleString('th-TH') : '0';
+
+                                const target = mo.quantity_to_produce || 0;
+                                const actual = mo.total_good_quantity || 0;
+                                let progress = 0;
+                                if (target > 0) {
+                                    progress = (actual / target) * 100;
+                                }
+                                if (mo.status === 'completed') {
+                                    progress = 100;
+                                }
+                                
+                                const statusMap = {
+                                    'pending': { color: 'secondary', text: 'รอผลิต' },
+                                    'in_progress': { color: 'primary', text: 'กำลังผลิต' },
+                                    'completed': { color: 'success', text: 'เสร็จสิ้น' },
+                                    'cancelled': { color: 'danger', text: 'ยกเลิก' }
+                                };
+                                const statusInfo = statusMap[mo.status] || { color: 'secondary', text: mo.status };
+
+                                const row = `
+                                    <tr>
+                                        <td>${mo.mo_number}</td>
+                                        <td>
+                                            <div>${mo.item_name}</div>
+                                            <div class="text-muted">${mo.item_code}</div>
+                                        </td>
+                                        <td class="text-end">${formatNumber(target)}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="subheader me-2">${Math.min(progress, 100).toFixed(0)}%</div>
+                                                <div class="progress progress-sm w-100">
+                                                    <div class="progress-bar bg-${statusInfo.color}" style="width: ${Math.min(progress, 100)}%" role="progressbar"></div>
+                                                </div>
+                                            </div>
+                                            <div class="text-muted small text-center mt-1">${formatNumber(actual)} / ${formatNumber(target)}</div>
+                                        </td>
+                                        <td><span class="badge bg-${statusInfo.color}-lt">${statusInfo.text}</span></td>
+                                        <td>${formatDate(mo.due_date)}</td>
+                                        <td><a href="/mo-detail.html?id=${mo.id}" class="btn btn-sm">ดูรายละเอียด</a></td>
+                                    </tr>
+                                `;
+                                tbody.innerHTML += row;
+                            });
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่พบข้อมูลใบสั่งผลิต</td></tr>';
+                        }
+                        // Update the timestamp
+                        lastUpdatedSpan.textContent = `อัปเดตล่าสุดเมื่อ: ${new Date().toLocaleTimeString('th-TH')}`;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching MOs:', error);
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">เกิดข้อผิดพลาดในการดึงข้อมูล</td></tr>';
+                        lastUpdatedSpan.textContent = 'การอัปเดตล้มเหลว';
+                    });
+            }
+
+            // === จุดที่แก้ไข 3: เรียกใช้ฟังก์ชันครั้งแรก และตั้งเวลาให้เรียกซ้ำ ===
+            fetchAndUpdateTable(); // โหลดข้อมูลทันทีเมื่อเปิดหน้า
+            setInterval(fetchAndUpdateTable, 15000); // อัปเดตข้อมูลทุก 15 วินาที
+        });
+    </script>
+</body>
+</html>
+                        </a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" href="/customers.html">
+                          <span class="nav-link-icon d-md-none d-lg-inline-block"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-users-group" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 13a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M8 21v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v1" /><path d="M15 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M17 10h2a2 2 0 0 1 2 2v1" /><path d="M5 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M3 13v-1a2 2 0 0 1 2 -2h2" /></svg></span>
+                          <span class="nav-link-title">จัดการลูกค้า</span>
+                        </a>
+                      </li>
+                       <li class="nav-item">
+                        <a class="nav-link" href="/vendors.html">
+                          <span class="nav-link-icon d-md-none d-lg-inline-block"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-building-store" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21l18 0" /><path d="M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4" /><path d="M5 21l0 -10.15" /><path d="M19 21l0 -10.15" /><path d="M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4" /></svg></span>
+                          <span class="nav-link-title">จัดการผู้ขาย</span>
+                        </a>
+                      </li>
+                     
+                      <li class="nav-header text-muted">Project Management</li>
+                      <li class="nav-item">
+                        <a class="nav-link" href="/projects.html">
+                          <span class="nav-link-icon d-md-none d-lg-inline-block"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-folder" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></svg></span>
+                          <span class="nav-link-title">Projects</span>
+                        </a>
+                      </li>
+        
+                      <li class="nav-header text-muted">ระบบ</li>
+                      <li class="nav-item">
+                        <a class="nav-link" href="#">
+                          <span class="nav-link-icon d-md-none d-lg-inline-block"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-users" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M21 21v-2a4 4 0 0 0 -3 -3.85" /></svg></span>
+                          <span class="nav-link-title">จัดการผู้ใช้</span>
+                        </a>
+                      </li>
+                      <li class="nav-item mt-auto">
+                        <a class="nav-link" href="/logout">
+                          <span class="nav-link-icon d-md-none d-lg-inline-block"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-logout" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M9 12h12l-3 -3" /><path d="M18 15l3 -3" /></svg></span>
+                          <span class="nav-link-title">ออกจากระบบ</span>
+                        </a>
+                      </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>    
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <h2 class="page-title">รายการใบสั่งผลิต (Manufacturing Orders)</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ MO</th>
+                                        <th>สินค้า</th>
+                                        <th class="text-end">เป้าหมายการผลิต</th>
+                                        <th style="width: 20%;">ความคืบหน้า</th>
+                                        <th>สถานะ</th>
+                                        <th>วันที่ต้องการเสร็จ</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mo-table-body">
+                                    <tr><td colspan="7" class="text-center">กำลังโหลดข้อมูล...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer text-end">
+                            <small class="text-muted" id="last-updated">Updating...</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const tbody = document.getElementById('mo-table-body');
+            const lastUpdatedSpan = document.getElementById('last-updated');
+
+            // === จุดที่แก้ไข 2: สร้างฟังก์ชันสำหรับดึงและแสดงข้อมูล ===
+            function fetchAndUpdateTable() {
+                fetch('/api/manufacturing-orders')
+                    .then(response => response.json())
+                    .then(data => {
+                        tbody.innerHTML = ''; // Clear existing rows
+                        if (data.data && data.data.length > 0) {
+                            data.data.forEach(mo => {
+                                const formatDate = (d) => d ? new Date(d).toLocaleDateString('th-TH') : '-';
+                                const formatNumber = (n) => n ? n.toLocaleString('th-TH') : '0';
+
+                                const target = mo.quantity_to_produce || 0;
+                                const actual = mo.total_good_quantity || 0;
+                                let progress = 0;
+                                if (target > 0) {
+                                    progress = (actual / target) * 100;
+                                }
+                                if (mo.status === 'completed') {
+                                    progress = 100;
+                                }
+                                
+                                const statusMap = {
+                                    'pending': { color: 'secondary', text: 'รอผลิต' },
+                                    'in_progress': { color: 'primary', text: 'กำลังผลิต' },
+                                    'completed': { color: 'success', text: 'เสร็จสิ้น' },
+                                    'cancelled': { color: 'danger', text: 'ยกเลิก' }
+                                };
+                                const statusInfo = statusMap[mo.status] || { color: 'secondary', text: mo.status };
+
+                                const row = `
+                                    <tr>
+                                        <td>${mo.mo_number}</td>
+                                        <td>
+                                            <div>${mo.item_name}</div>
+                                            <div class="text-muted">${mo.item_code}</div>
+                                        </td>
+                                        <td class="text-end">${formatNumber(target)}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="subheader me-2">${Math.min(progress, 100).toFixed(0)}%</div>
+                                                <div class="progress progress-sm w-100">
+                                                    <div class="progress-bar bg-${statusInfo.color}" style="width: ${Math.min(progress, 100)}%" role="progressbar"></div>
+                                                </div>
+                                            </div>
+                                            <div class="text-muted small text-center mt-1">${formatNumber(actual)} / ${formatNumber(target)}</div>
+                                        </td>
+                                        <td><span class="badge bg-${statusInfo.color}-lt">${statusInfo.text}</span></td>
+                                        <td>${formatDate(mo.due_date)}</td>
+                                        <td><a href="/mo-detail.html?id=${mo.id}" class="btn btn-sm">ดูรายละเอียด</a></td>
+                                    </tr>
+                                `;
+                                tbody.innerHTML += row;
+                            });
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่พบข้อมูลใบสั่งผลิต</td></tr>';
+                        }
+                        // Update the timestamp
+                        lastUpdatedSpan.textContent = `อัปเดตล่าสุดเมื่อ: ${new Date().toLocaleTimeString('th-TH')}`;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching MOs:', error);
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">เกิดข้อผิดพลาดในการดึงข้อมูล</td></tr>';
+                        lastUpdatedSpan.textContent = 'การอัปเดตล้มเหลว';
+                    });
+            }
+
+            // === จุดที่แก้ไข 3: เรียกใช้ฟังก์ชันครั้งแรก และตั้งเวลาให้เรียกซ้ำ ===
+            fetchAndUpdateTable(); // โหลดข้อมูลทันทีเมื่อเปิดหน้า
+            setInterval(fetchAndUpdateTable, 15000); // อัปเดตข้อมูลทุก 15 วินาที
+        });
+    </script>
+</body>
+</html>

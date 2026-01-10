@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>Sign in - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+  </head>
+  <body  class="d-flex flex-column">
+    <div class="page page-center">
+      <div class="container container-tight py-4">
+        <div class="text-center mb-4">
+          <!-- ✅ แก้ไข: เปลี่ยน path ของรูปภาพให้ถูกต้อง -->
+          <a href="." class="navbar-brand navbar-brand-autodark"><img src="/uploads/items/logo.png" height="36" alt="ES-PA Engineering"></a>
+        </div>
+        <div class="card card-md">
+          <div class="card-body">
+            <h2 class="h2 text-center mb-4">ลงชื่อเข้าสู่ระบบ</h2>
+            
+            <div id="alert-container"></div>
+            
+            <form id="login-form" autocomplete="off">
+              <div class="mb-3">
+                <label class="form-label">อีเมล</label>
+                <input type="email" class="form-control" placeholder="your@email.com" name="email" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">รหัสผ่าน</label>
+                <input type="password" class="form-control" placeholder="Your password" name="password" required>
+              </div>
+              <div class="form-footer">
+                <button type="submit" class="btn btn-primary w-100">ลงชื่อเข้าใช้</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="text-center text-muted mt-3">
+          ยังไม่มีบัญชี? <a href="./register.html" tabindex="-1">สร้างบัญชีที่นี่</a>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+    document.getElementById('login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        const form = event.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const alertContainer = document.getElementById('alert-container');
+        alertContainer.innerHTML = ''; // Clear previous alerts
+        
+        try {
+            // ✅ Changed: Use /auth/login endpoint
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                window.location.href = result.redirectUrl; // Redirect based on server response
+            } else {
+                alertContainer.innerHTML = `<div class="alert alert-danger" role="alert">${result.message}</div>`;
+            }
+        } catch (error) {
+            console.error('Login Error:', error);
+            alertContainer.innerHTML = `<div class="alert alert-danger" role="alert">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>`;
+        }
+         // ✅ เพิ่มโค้ดส่วนนี้เข้ามา
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const success = params.get('success');
+        const container = document.getElementById('alert-container');
+        
+        if (success === 'registered') {
+            const alertHtml = `<div class="alert alert-success" role="alert">สร้างบัญชีสำเร็จแล้ว! กรุณาลงชื่อเข้าใช้</div>`;
+            container.innerHTML = alertHtml;
+        }
+    });
+    });
+</script>
+  </body>
+</html>

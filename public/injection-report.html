@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Injection Parameter Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            .page-wrapper {
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background: #fff;
+                color: #000;
+            }
+        }
+
+        .diff-changed {
+            background-color: #ffd7d7;
+            font-weight: bold;
+            color: #d00;
+        }
+
+        .diff-ok {
+            background-color: #d7ffd7;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-wrapper">
+        <div class="container-xl py-4">
+            <div class="mb-3 no-print">
+                <button class="btn btn-primary" onclick="window.print()">Print Report</button>
+                <button class="btn btn-secondary" onclick="window.history.back()">Back</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Injection Parameter Check Report</h3>
+                    <div class="card-actions">
+                        <span id="report-date"></span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Machine:</strong> <span id="machine-name">-</span></div>
+                        <div class="col-6"><strong>MO Number:</strong> <span id="mo-number">-</span></div>
+                        <div class="col-6"><strong>Inspector:</strong> <span id="inspector-name">-</span></div>
+                        <div class="col-6"><strong>Date:</strong> <span id="check-date">-</span></div>
+                    </div>
+
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Previous / Standard</th>
+                                <th>Current Check</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-body">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+
+                    <div class="mt-4">
+                        <strong>Notes:</strong>
+                        <p id="notes-text" class="text-muted border p-2"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/auth-client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Mock ID from URL or generic latest
+            // In real app, url would be ?mo=MO-123
+            // For demo, we fetch the latest check of the hardcoded MO or just list them.
+            // Let's assume we pass ?mo_number=...
+
+            // For this prototype, I'll fetch the history of the MO-DEMO-001 if not params
+            const moNumber = new URLSearchParams(window.location.search).get('mo_number') || 'MO-DEMO-001';
+
+            try {
+                const res = await fetchWithAuth(`/api/injection-parameters/history/${moNumber}`);
+                const json = await res.json();
+
+                if (json.success && json.data.length > 0) {
+                    const current = json.data[0];
+                    const previous = json.data[1] || null; // Compare with immediate previous
+
+                    renderReport(current, previous);
+                } else {
+                    document.getElementById('report-body').innerHTML = '<tr><td colspan="4" class="text-center">No data found for this MO</td></tr>';
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('report-body').innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error: ${e.message}</td></tr>`;
+            }
+        });
+
+        function renderReport(current, previous) {
+            document.getElementById('machine-name').innerText = current.machine_name || current.machine_id;
+            document.getElementById('mo-number').innerText = current.mo_number;
+            document.getElementById('inspector-name').innerText = current.inspector_name || 'Admin';
+            document.getElementById('check-date').innerText = new Date(current.check_date).toLocaleString();
+            document.getElementById('notes-text').innerText = current.notes || '-';
+
+            const curData = JSON.parse(current.parameter_data || '{}');
+            const prevData = previous ? JSON.parse(previous.parameter_data || '{}') : {};
+
+            const tbody = document.getElementById('report-body');
+            tbody.innerHTML = '';
+
+            // Flatten keys
+            for (const [key, value] of Object.entries(curData)) {
+                const prevValue = prevData[key] || '-';
+                const isChanged = previous && (value != prevValue);
+
+                const tr = document.createElement('tr');
+                tr.className = isChanged ? 'diff-changed' : '';
+
+                tr.innerHTML = `
+            <td>${key}</td>
+            <td>${prevValue}</td>
+            <td>${value}</td>
+            <td>${isChanged ? 'CHANGED' : 'OK'}</td>
+        `;
+                tbody.appendChild(tr);
+            }
+        }
+    </script>
+</body>
+
+</html>

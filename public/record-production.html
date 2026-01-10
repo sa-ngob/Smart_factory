@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>บันทึกผลผลิตประจำวัน - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar-menu">
+            </aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <h2 class="page-title">บันทึกผลผลิตประจำวัน(TEST VERSION 999)</h2>
+                    <h3 class="text-muted" id="mo-number-header">Loading...</h3>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <form id="record-form">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">วันที่บันทึก</label>
+                                        <input type="text" id="record_date" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">กะ</label>
+                                        <select id="shift" class="form-select" required>
+                                            <option value="Morning">กะเช้า</option>
+                                            <option value="Night">กะดึก</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">ผู้บันทึก</label>
+                                        <input type="text" id="operator_name" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">จำนวนงานดี (Good Qty)</label>
+                                        <input type="number" id="good_quantity" class="form-control" value="0" min="0" required>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">หมายเหตุ</label>
+                                    <textarea id="notes" class="form-control" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h3 class="card-title">รายละเอียดงานเสีย (Scrap Details)</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-vcenter card-table">
+                                    <thead>
+                                        <tr>
+                                            <th>สาเหตุของเสีย</th>
+                                            <th style="width: 150px;">จำนวน</th>
+                                            <th class="w-1"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="scrap-table-body">
+                                        </tbody>
+                                </table>
+                            </div>
+                            <div class="card-footer">
+                                <button type="button" id="add-scrap-btn" class="btn btn-outline-primary">
+                                    + เพิ่มรายการของเสีย
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="#" id="cancel-btn" class="btn btn-link">ยกเลิก</a>
+                            <button type="submit" class="btn btn-primary ms-2">บันทึกข้อมูล</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script src="/js/auth-client.js"></script>
+
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            
+            // 1. โหลด Sidebar และ User Info
+            try {
+                const sidebarRes = await fetchWithAuth('/api/sidebar');
+                if(sidebarRes.ok) document.getElementById('sidebar-menu').innerHTML = await sidebarRes.text();
+
+                const userRes = await fetchWithAuth('/api/user-info');
+                const userData = await userRes.json();
+                if (userData.success && userData.displayName) {
+                    document.getElementById('display-username').textContent = userData.displayName;
+                    document.getElementById('operator_name').value = userData.displayName;
+                }
+            } catch (err) { console.error(err); }
+
+            // 2. จัดการ Parameter URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const moId = urlParams.get('mo_id');
+            const returnUrl = urlParams.get('returnUrl');
+
+            if (!moId) {
+                // ถ้าไม่มี MO ID ให้แจ้งเตือน แต่ไม่ Error จอดำ
+                console.warn('ไม่พบรหัสใบสั่งผลิต (MO ID)');
+            }
+
+            document.getElementById('cancel-btn').href = returnUrl ? decodeURIComponent(returnUrl) : (moId ? `/mo-detail.html?id=${moId}` : '#');
+            flatpickr("#record_date", { defaultDate: "today" });
+
+            // 3. ดึงข้อมูล MO Number
+            if (moId) {
+                try {
+                    const moRes = await fetchWithAuth(`/api/manufacturing-orders/${moId}`);
+                    const moData = await moRes.json();
+                    if(moData.data && moData.data.details) {
+                        document.getElementById('mo-number-header').textContent = `สำหรับ MO: ${moData.data.details.mo_number}`;
+                    }
+                } catch(e) { console.error("Load MO Error", e); }
+            }
+
+            // ==========================================
+            // 4. ส่วนสำคัญ (แก้แล้ว): โหลด Dropdown ด้วย fetchWithAuth
+            // ==========================================
+            let defectTypes = []; 
+
+            try {
+                // *** ใช้ fetchWithAuth แทน fetch ธรรมดา ***
+                const defectRes = await fetchWithAuth('/api/production-records/defect-types'); 
+                if(defectRes.ok) {
+                    defectTypes = await defectRes.json(); 
+                    console.log("Defects loaded:", defectTypes);
+                    
+                    // เพิ่มแถวแรกให้เลย
+                    addScrapRow();
+                } else {
+                    console.error("Failed to load defects:", defectRes.status);
+                }
+            } catch(e) { console.error("Load Defects Error", e); }
+
+            const scrapTbody = document.getElementById('scrap-table-body');
+
+            function addScrapRow() {
+                const row = document.createElement('tr');
+                
+                let options = '<option value="">-- เลือกสาเหตุ --</option>';
+                defectTypes.forEach(d => {
+                    options += `<option value="${d.code}">${d.code} - ${d.name}</option>`;
+                });
+
+                row.innerHTML = `
+                    <td>
+                        <select class="form-select scrap-defect" required>
+                            ${options}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control scrap-quantity" value="0" min="1" required>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-danger remove-scrap-btn">ลบ</button>
+                    </td>
+                `;
+                scrapTbody.appendChild(row);
+            }
+
+            document.getElementById('add-scrap-btn').addEventListener('click', addScrapRow);
+
+            scrapTbody.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-scrap-btn')) {
+                    e.target.closest('tr').remove();
+                }
+            });
+
+            // ==========================================
+            // 5. ส่วนบันทึกข้อมูล (Submit)
+            // ==========================================
+            document.getElementById('record-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const scrap_details = [];
+                document.querySelectorAll('#scrap-table-body tr').forEach(row => {
+                    const defect_code = row.querySelector('.scrap-defect').value;
+                    const quantity = row.querySelector('.scrap-quantity').value;
+
+                    if (defect_code && quantity > 0) {
+                        scrap_details.push({ 
+                            defect_code: defect_code, 
+                            quantity: parseInt(quantity) 
+                        });
+                    }
+                });
+
+                const recordData = {
+                    mo_id: moId,
+                    record_date: document.getElementById('record_date').value,
+                    shift: document.getElementById('shift').value,
+                    operator_name: document.getElementById('operator_name').value,
+                    good_quantity: parseInt(document.getElementById('good_quantity').value) || 0,
+                    notes: document.getElementById('notes').value,
+                    scrap_details: scrap_details
+                };
+
+                try {
+                    // ใช้ fetchWithAuth สำหรับการบันทึกด้วย
+                    const res = await fetchWithAuth('/api/production-records', {
+                        method: 'POST',
+                        body: JSON.stringify(recordData)
+                    });
+
+                    const result = await res.json();
+
+                    if (res.ok) {
+                        alert('บันทึกสำเร็จ!');
+                        window.location.href = returnUrl ? decodeURIComponent(returnUrl) : (moId ? `/mo-detail.html?id=${moId}` : '/dashboard.html');
+                    } else {
+                        throw new Error(result.error || 'บันทึกไม่สำเร็จ');
+                    }
+                } catch (error) {
+                    alert(`เกิดข้อผิดพลาด: ${error.message}`);
+                    console.error(error);
+                }
+            });
+        });
+    </script>

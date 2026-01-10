@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Sales & Marketing Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+        .kpi-value { font-size: 2rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl">
+                    <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col"><h2 class="page-title">Sales & Marketing Dashboard</h2></div>
+                        <div class="col-auto ms-auto">
+                            <div class="btn-group" id="period-filter">
+                                <button type="button" class="btn" data-period="daily">Today</button>
+                                <button type="button" class="btn active" data-period="monthly">This Month</button>
+                                <button type="button" class="btn" data-period="yearly">This Year</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="row row-cards">
+                        <div class="col-md-4"><div class="card card-body"><div class="subheader">ยอดขาย (จาก Invoice)</div><div class="kpi-value text-success" id="sales-kpi-total">...</div></div></div>
+                        <div class="col-md-4"><div class="card card-body"><div class="subheader">มูลค่าใบสั่งขาย (ใหม่)</div><div class="kpi-value" id="sales-kpi-orders-value">...</div></div></div>
+                        <div class="col-md-4"><div class="card card-body"><div class="subheader">จำนวนใบสั่งขาย (ใหม่)</div><div class="kpi-value text-azure" id="sales-kpi-orders-count">...</div></div></div>
+                        <div class="col-12"><div class="card"><div class="card-header"><h3 class="card-title">5 ใบสั่งขายล่าสุด</h3></div><div class="table-responsive"><table class="table card-table table-vcenter"><thead><tr><th>เลขที่ SO</th><th>ลูกค้า</th><th>วันที่</th><th class="text-end">ยอดเงิน</th><th class="text-center">สถานะ</th></tr></thead><tbody id="sales-latest-orders-table"></tbody></table></div></div></div>
+                        <div class="col-12"><div class="card"><div class="card-header"><h3 class="card-title">ยอดขายตามลูกค้า (Top 10)</h3></div><div class="card-body"><div id="chart-sales-by-customer"></div></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        // --- ส่วนที่ 1: ฟังก์ชันพื้นฐานและการตั้งค่าเริ่มต้น ---
+        
+        let currentPeriod = 'monthly';
+        let salesChart = null;
+
+        async function loadSidebar() {
+            try {
+                const response = await fetchWithAuth('/api/sidebar'); 
+                const sidebarHtml = await response.text();
+                document.getElementById('sidebar').innerHTML = sidebarHtml;
+                // ✅ highlight: เพิ่มการเรียกใช้ฟังก์ชันไฮไลท์เมนู หลังจากโหลด Sidebar เสร็จ
+                setActiveMenuItem();
+            } catch (error) {
+                console.error("Could not load sidebar:", error.message);
+            }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetchWithAuth('/api/user-info');
+                const data = await response.json();
+                if (data.success && data.displayName) {
+                    document.getElementById('display-username').textContent = data.displayName;
+                }
+            } catch (error) {
+                console.error("Could not load user info:", error.message);
+            }
+        }
+
+        // --- ส่วนที่ 2: ฟังก์ชันสำหรับโหลดและแสดงผลข้อมูล Dashboard ---
+
+        const updateText = (id, value, format = 'number') => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (value === undefined || value === null) { el.textContent = '...'; return; }
+            if (format === 'currency') el.textContent = `฿${Number(value).toLocaleString('th-TH', { maximumFractionDigits: 0 })}`;
+            else el.textContent = Number(value).toLocaleString('th-TH');
+        };
+
+        const renderDashboard = (data) => {
+            const formatDate = (dateString) => new Date(dateString).toLocaleDateString('th-TH');
+            updateText('sales-kpi-total', data.total_sales, 'currency');
+            updateText('sales-kpi-orders-value', data.new_orders_value, 'currency');
+            updateText('sales-kpi-orders-count', data.new_orders_count);
+            
+            const soTable = document.getElementById('sales-latest-orders-table');
+            soTable.innerHTML = (data.latest_orders_table || []).map(so => `
+                <tr>
+                    <td>${so.so_number}</td><td>${so.customer_name}</td><td>${formatDate(so.order_date)}</td>
+                    <td class="text-end">${Number(so.total_amount).toLocaleString('th-TH')}</td>
+                    <td class="text-center"><span class="badge bg-secondary-lt">${so.status}</span></td>
+                </tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted">No sales orders in this period.</td></tr>';
+            
+            const chartOptions = {
+                chart: { type: 'bar', height: 350, toolbar: { show: false } },
+                series: [{ name: 'ยอดขาย', data: data.sales_by_customer.map(c => c.total_sales) }],
+                xaxis: { categories: data.sales_by_customer.map(c => c.customer_name) },
+                plotOptions: { bar: { horizontal: true, borderRadius: 4, dataLabels: { position: 'top' } } },
+                dataLabels: { enabled: true, offsetX: 30, style: { fontSize: '12px', colors: ['#333'] }, formatter: (val) => `฿${val.toLocaleString('th-TH')}` },
+                tooltip: { y: { formatter: (val) => `฿${val.toLocaleString('th-TH')}` } },
+            };
+
+            if (salesChart) {
+                salesChart.updateOptions(chartOptions);
+            } else {
+                salesChart = new ApexCharts(document.querySelector("#chart-sales-by-customer"), chartOptions);
+                salesChart.render();
+            }
+        };
+        
+        const fetchData = async (period) => {
+            try {
+                // ✅ highlight: เปลี่ยนมาใช้ fetchWithAuth เพื่อความปลอดภัยและเสถียรภาพ
+                const response = await fetchWithAuth(`/api/sales-dashboard?period=${period}`);
+                const result = await response.json();
+                if (result.success) {
+                    renderDashboard(result.data);
+                } else { throw new Error(result.error); }
+            } catch (err) {
+                console.error("Failed to load sales dashboard:", err);
+                document.querySelector('.page-body .container-xl').innerHTML = `<div class="alert alert-danger">Failed to load data. Please check the console.</div>`;
+            }
+        };
+
+        // --- ส่วนที่ 3: การตั้งค่า Event Listener และการเรียกใช้งาน ---
+
+        document.getElementById('period-filter').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
+                currentPeriod = e.target.dataset.period;
+                document.querySelectorAll('#period-filter .btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                fetchData(currentPeriod);
+            }
+        });
+        
+        // --- เรียกใช้งานฟังก์ชันทั้งหมดเมื่อหน้าเว็บโหลดเสร็จ ---
+        loadSidebar();
+        loadUserInfo(); // ✅ highlight: คงการเรียกฟังก์ชันนี้ไว้ เพราะหน้านี้มีที่แสดงผล
+        fetchData(currentPeriod);
+    });
+    </script>
+</body>
+</html>

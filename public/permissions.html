@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>จัดการสิทธิ์การเข้าถึง - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg">
+            <%- include('sidebar.ejs') %>
+        </aside>
+
+        <div class="page-wrapper">
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="page-header d-print-none">
+                        <h2 class="page-title">จัดการสิทธิ์การเข้าถึง (Role-Page Mapping)</h2>
+                    </div>
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table card-table table-vcenter">
+                                <thead>
+                                    <tr>
+                                        <th>ชื่อหน้า (Page Name)</th>
+                                        <% roles.forEach(role => { %>
+                                            <th class="text-center"><%= role.name %></th>
+                                        <% }); %>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% pages.forEach(page => { %>
+                                    <tr>
+                                        <td><%= page.name %></td>
+                                        <% roles.forEach(role => { %>
+                                            <td class="text-center">
+                                                <input class="form-check-input" type="checkbox" 
+                                                       data-role-id="<%= role.id %>" 
+                                                       data-page-id="<%= page.id %>"
+                                                       <% if (permissions[role.id] && permissions[role.id].includes(page.id)) { %>
+                                                           checked
+                                                       <% } %>>
+                                            </td>
+                                        <% }); %>
+                                    </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer text-end">
+                             <div id="alert-container-perm" class="mt-2 text-start"></div>
+                            <button class="btn btn-primary" id="save-permissions-btn">บันทึกการเปลี่ยนแปลง</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('save-permissions-btn').addEventListener('click', async () => {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const alertContainer = document.getElementById('alert-container-perm');
+            let permissions = [];
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    permissions.push({
+                        role_id: parseInt(cb.dataset.roleId, 10),
+                        page_id: parseInt(cb.dataset.pageId, 10)
+                    });
+                }
+            });
+
+            try {
+                const response = await fetch('/api/permissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ permissions: permissions })
+                });
+
+                if (response.ok) {
+                    showAlert('บันทึกสิทธิ์เรียบร้อยแล้ว', 'success');
+                } else {
+                    showAlert('เกิดข้อผิดพลาดในการบันทึก', 'danger');
+                }
+            } catch (error) {
+                showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'danger');
+                console.error('Save Permission Error:', error);
+            }
+
+            function showAlert(message, type) {
+                const alertHtml = `<div class="alert alert-${type}" role="alert">${message}</div>`;
+                alertContainer.innerHTML = alertHtml;
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>

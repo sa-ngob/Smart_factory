@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>เพิ่มรายการสินค้าใหม่ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <!-- <style>
+        /* CSS สำหรับซ่อน/แสดงปุ่มตาม Role */
+        .admin-only { display: none !important; }
+        body.role-admin .admin-only { display: inline-flex !important; }
+    </style> -->
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <h2 class="page-title">เพิ่มรายการสินค้าใหม่</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <form id="item-form" class="card">
+                        <div class="card-body">
+                            <!-- === ส่วนข้อมูลหลัก === -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label required">ประเภท</label>
+                                    <select name="item_type" class="form-select" required>
+                                        <option value="" selected disabled>-- กรุณาเลือกประเภท --</option>
+                                        <option value="finished_good">สินค้าสำเร็จรูป (FG)</option>
+                                        <option value="semi_good">สินค้าระหว่างผลิต (SE)</option>
+                                        <option value="raw_material">วัตถุดิบ (RM)</option>
+                                        <option value="consumable">วัสดุสิ้นเปลือง (CS)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label required">รหัส</label>
+                                    <input type="text" name="item_code" class="form-control"
+                                        placeholder="เลือกประเภทก่อน" required readonly>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label required">ชื่อ</label>
+                                <input type="text" name="item_name" class="form-control" required>
+                            </div>
+                            <div class="mb-3" id="company-select-wrapper" style="display: none;">
+                                <label class="form-label" id="company-label">บริษัทที่เกี่ยวข้อง</label>
+                                <select name="customer_id" id="company-select" placeholder="เลือก..."></select>
+                            </div>
+
+                            <!-- === ส่วนรายละเอียดเพิ่มเติม (ที่จะซ่อน/แสดง) === -->
+                            <div id="model-group" class="mb-3" style="display: none;">
+                                <label class="form-label">รุ่น (Model)</label>
+                                <input type="text" name="model" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">ชื่อวัตถุดิบ</label>
+                                <input type="text" name="material_name" class="form-control">
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3"><label class="form-label">เกรด</label><input type="text"
+                                        name="grade" class="form-control"></div>
+                                <div class="col-6 mb-3"><label class="form-label">สี</label><input type="text"
+                                        name="colour" class="form-control"></div>
+                            </div>
+                            <!-- === Financials & Stock === -->
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label">ราคาซื้อ (Cost Price)</label>
+                                    <input type="number" name="cost_price" class="form-control" step="0.01" min="0">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">ราคาขาย (Selling Price)</label>
+                                    <input type="number" name="selling_price" class="form-control" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label">จำนวนสต็อก (Stock Quantity)</label>
+                                    <input type="number" name="stock_quantity" class="form-control" step="1" min="0">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">สต็อกขั้นต่ำ (Min Stock)</label>
+                                    <input type="number" name="min_stock" class="form-control" step="1" min="0">
+                                </div>
+                            </div>
+
+                            <div id="tech-specs-group" style="display: none;">
+                                <div class="row">
+                                    <div class="col-6 mb-3"><label class="form-label">น้ำหนัก (กรัม)</label><input
+                                            type="number" name="part_weight_gram" class="form-control" step="0.01">
+                                    </div>
+                                    <div class="col-6 mb-3"><label class="form-label">Cycle Time (วินาที)</label><input
+                                            type="number" name="cycle_time_sec" class="form-control" step="0.1"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">หน่วยนับ</label>
+                                    <input type="text" name="uom" class="form-control" placeholder="เช่น pcs, kg, m">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">รูปภาพ</label>
+                                <input type="file" name="image" class="form-control" accept="image/*">
+                            </div>
+                        </div>
+                        <div class="card-footer text-end">
+                            <a href="/items.html" class="btn">ยกเลิก</a>
+                            <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            // 1. Load Sidebar & User Info
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    const link = document.querySelector('a.nav-link[href="/items.html"]'); // Highlight parent menu
+                    if (link) link.parentElement.classList.add('active');
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                        // Set role class on body if needed for CSS hiding
+                        if (data.role) {
+                            document.body.classList.add(`role-${data.role}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            await loadSidebar();
+            await loadUserInfo();
+
+            // 2. Initialize Form Logic
+            const form = document.getElementById('item-form');
+            const itemTypeSelect = form.elements['item_type'];
+            const itemCodeInput = form.elements['item_code'];
+            const companySelectWrapper = document.getElementById('company-select-wrapper');
+            const companyLabel = document.getElementById('company-label');
+            const modelGroup = document.getElementById('model-group');
+            const techSpecsGroup = document.getElementById('tech-specs-group');
+
+            // Initialize TomSelect
+            const companySelect = new TomSelect("#company-select", {
+                valueField: 'id', labelField: 'name', searchField: 'name', create: false
+            });
+
+            // Functions
+            async function loadCompanies(entityType) {
+                companySelectWrapper.style.display = 'none';
+                companyLabel.textContent = 'กำลังโหลด...';
+                companySelect.clear();
+                companySelect.clearOptions();
+
+                try {
+                    const response = await fetchWithAuth(`/api/entities?list_for=${entityType}`);
+                    if (!response.ok) throw new Error(`Failed to load ${entityType}`);
+                    const result = await response.json();
+
+                    companySelect.addOptions(result.data);
+                    companyLabel.textContent = entityType === 'customer' ? 'ลูกค้า' : 'ผู้ขาย';
+                    companySelectWrapper.style.display = 'block';
+                } catch (error) { console.error(error); }
+            }
+
+            function updateFormVisibility(selectedType) {
+                modelGroup.style.display = 'none';
+                techSpecsGroup.style.display = 'none';
+                companySelectWrapper.style.display = 'none';
+
+                switch (selectedType) {
+                    case 'finished_good':
+                    case 'semi_good':
+                        modelGroup.style.display = 'block';
+                        techSpecsGroup.style.display = 'block';
+                        loadCompanies('customer');
+                        break;
+                    case 'raw_material':
+                        loadCompanies('vendor');
+                        break;
+                    case 'consumable':
+                        break;
+                }
+            }
+
+            async function generateItemCode() {
+                const selectedType = itemTypeSelect.value;
+                if (!selectedType) {
+                    itemCodeInput.value = '';
+                    itemCodeInput.placeholder = 'เลือกประเภทก่อน';
+                    return;
+                }
+                try {
+                    itemCodeInput.placeholder = 'กำลังสร้างรหัส...';
+                    const response = await fetchWithAuth(`/api/items/next-code?type=${selectedType}`);
+                    if (!response.ok) throw new Error('Failed to generate code');
+                    const result = await response.json();
+                    itemCodeInput.value = result.item_code;
+                } catch (error) {
+                    console.error('Error generating item code:', error);
+                    itemCodeInput.value = 'Error!';
+                }
+            }
+
+            // Event Listeners
+            itemTypeSelect.addEventListener('change', () => {
+                generateItemCode();
+                updateFormVisibility(itemTypeSelect.value);
+            });
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetchWithAuth('/api/items', {
+                        method: 'POST',
+                        body: formData // fetchWithAuth handles Headers automatically if body is FormData? No, usually browser does.
+                        // However, auth-client.js fetchWithAuth might force Content-Type to JSON?
+                        // Let's check auth-client.js. If it does not handle FormData, we might need to use raw fetch with cookie (fetchWithAuth usually just adds header if token based, or does nothing if cookie based).
+                        // Since we use Cookie Auth, standard fetch works. `fetchWithAuth` adds redirect logic.
+                    });
+
+                    if (!response.ok) {
+                        const errorResult = await response.json();
+                        throw new Error(errorResult.error || 'Failed to save data');
+                    }
+                    alert('บันทึกข้อมูลสินค้าสำเร็จ!');
+                    window.location.href = '/items.html';
+                } catch (error) {
+                    alert(`เกิดข้อผิดพลาด: ${error.message}`);
+                }
+            });
+
+            // Initial State
+            updateFormVisibility('');
+        });
+    </script>
+</body>
+
+</html>

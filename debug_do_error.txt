@@ -1,0 +1,24 @@
+[2025-12-09T13:32:29.764Z] Error creating DO: column "shipping_address" of relation "delivery_orders" does not exist
+Stack: error: column "shipping_address" of relation "delivery_orders" does not exist
+    at E:\Dev_Project\smart-factory-tabler - R21\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async run (E:\Dev_Project\smart-factory-tabler - R21\routes\deliveryOrders.js:17:24)
+    at async E:\Dev_Project\smart-factory-tabler - R21\routes\deliveryOrders.js:135:26
+[2025-12-09T13:32:55.055Z] Error creating DO: column "shipping_address" of relation "delivery_orders" does not exist
+Stack: error: column "shipping_address" of relation "delivery_orders" does not exist
+    at E:\Dev_Project\smart-factory-tabler - R21\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async run (E:\Dev_Project\smart-factory-tabler - R21\routes\deliveryOrders.js:17:24)
+    at async E:\Dev_Project\smart-factory-tabler - R21\routes\deliveryOrders.js:135:26
+[2025-12-09T13:36:28.456Z] Error creating DO: column "item_code" of relation "delivery_order_items" does not exist
+Stack: error: column "item_code" of relation "delivery_order_items" does not exist
+    at E:\Dev_Project\smart-factory-tabler - R21\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async run (E:\Dev_Project\smart-factory-tabler - R21\routes\deliveryOrders.js:17:24)
+    at async E:\Dev_Project\smart-factory-tabler - R21\routes\deliveryOrders.js:143:13
+[2025-12-09T13:36:47.250Z] Error creating DO: column "item_code" of relation "delivery_order_items" does not exist
+Stack: error: column "item_code" of relation "delivery_order_items" does not exist
+    at E:\Dev_Project\smart-factory-tabler - R21\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async run (E:\Dev_Project\smart-factory-tabler - R21\routes\deliveryOrders.js:17:24)
+    at async E:\Dev_Project\smart-factory-tabler - R21\routes\deliveryOrders.js:143:13

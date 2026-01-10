@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>รายละเอียดใบสั่งขาย - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+        .invoice-details strong { display: inline-block; min-width: 120px; }
+    </style>
+</head>
+<body>
+    <div class="page">
+      <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+        </aside>    
+      <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-fluid">
+                  <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">
+                                รายละเอียดใบสั่งขาย
+                            </h2>
+                            <h3 class="text-muted" id="so-number-header"></h3>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none btn-list">
+                            <div id="action-buttons" class="d-inline-block"></div>
+                            <a href="/sales-orders.html" class="btn btn-outline-secondary">
+                                กลับ
+                            </a>
+                            <button type="button" class="btn" onclick="window.print();">
+                                พิมพ์
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body p-md-4">
+                <div class="container-fluid">
+                    <div class="card card-lg" id="invoice-card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <h4>ข้อมูลลูกค้า</h4>
+                                    <p class="text-muted" id="customer-info">
+                                        กำลังโหลด...
+                                    </p>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <h4>ข้อมูลใบสั่งขาย</h4>
+                                    <p class="text-muted invoice-details" id="so-info">
+                                        กำลังโหลด...
+                                    </p>
+                                </div>
+                            </div>
+                            <h4 class="mt-4">รายการสินค้า</h4>
+                            <table class="table table-transparent table-responsive">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center" style="width: 1%">#</th>
+                                        <th>สินค้า</th>
+                                        <th class="text-center" style="width: 15%">จำนวน</th>
+                                        <th class="text-end" style="width: 20%">ราคาต่อหน่วย</th>
+                                        <th class="text-end" style="width: 20%">ยอดรวม</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="items-table-body">
+                                    <tr><td colspan="5" class="text-center">กำลังโหลด...</td></tr>
+                                </tbody>
+                            </table>
+                            <div class="row justify-content-end">
+                                <div class="col-md-5 col-lg-4">
+                                    <table class="table table-transparent">
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>ยอดรวมสุทธิ</strong></td>
+                                                <td class="text-end" id="grand-total">0.00</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/auth-client.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // สคริปต์นี้สำหรับโหลด Sidebar และ User Info
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลาง (auth-client.js) เพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลาง (auth-client.js) เพื่อเรียก API
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชัน
+            loadSidebar();
+            loadUserInfo();
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const soId = urlParams.get('id');
+
+            if (!soId) {
+                document.body.innerHTML = '<div class="container text-center mt-5"><h1>ไม่พบ ID ของใบสั่งขาย</h1><a href="/sales-orders.html">กลับไปหน้ารายการ</a></div>';
+                return;
+            }
+
+            // Helpers
+            const formatDate = (dateString) => {
+                if (!dateString) return '-';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+            };
+
+            const formatNumber = (num) => {
+                if (num === null || num === undefined) return '0.00';
+                return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
+
+            // === ฟังก์ชันสำหรับสร้างปุ่มและจัดการการสร้าง MO ===
+            function populateActionButtons(details) {
+                const buttonContainer = document.getElementById('action-buttons');
+                buttonContainer.innerHTML = '';
+
+                // ใช้ .trim() เพื่อตัดช่องว่างที่อาจติดมากับข้อมูล
+                const status = details.status ? details.status.trim() : '';
+
+                // --- DEBUGGING ---
+                console.log("--- DEBUGGING INFO ---");
+                console.log("Data received from API:", details);
+                console.log("Status from DB (before trim):", `'${details.status}'`);
+                console.log("Status (after trim):", `'${status}'`);
+                console.log("Is status === 'confirmed'?", status === 'confirmed');
+                console.log("----------------------");
+                // --- END DEBUGGING ---
+
+                if (status === 'confirmed') {
+                    const createMoButton = document.createElement('button');
+                    createMoButton.type = 'button';
+                    createMoButton.className = 'btn btn-primary';
+                    createMoButton.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-factory-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21h18" /><path d="M5 21v-12l5 4v-4l5 4h4" /><path d="M19 21v-8l-1.426 -1.07a1.02 1.02 0 0 0 -1.2 .104l-2.374 2.016" /><path d="M15 13v-2" /><path d="M11 13v-2" /><path d="M7 13v-2" /></svg>
+                        สร้างใบสั่งผลิต
+                    `;
+                    createMoButton.onclick = () => createManufacturingOrder(details.id, createMoButton);
+                    buttonContainer.appendChild(createMoButton);
+                }
+            }
+
+            function createManufacturingOrder(salesOrderId, button) {
+                if (!confirm('คุณต้องการสร้างใบสั่งผลิตจากใบสั่งขายนี้ใช่หรือไม่?')) return;
+                
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> กำลังสร้าง...';
+
+                // *** หมายเหตุ: สคริปต์นี้ไม่ได้ใช้ fetchWithAuth() ***
+                // หาก API endpoint นี้ต้องการการยืนยันตัวตน คุณอาจต้องเปลี่ยนไปใช้
+                // fetchWithAuth('/api/manufacturing-orders/from-so', { ... })
+                // แต่ตอนนี้จะคงไว้ตามโค้ดเดิมของคุณก่อน
+                fetch('/api/manufacturing-orders/from-so', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ so_id: salesOrderId })
+                })
+                .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (ok) {
+                        alert(data.message || 'สร้างใบสั่งผลิตสำเร็จ!');
+                        window.location.reload();
+                    } else {
+                        throw new Error(data.error || 'เกิดข้อผิดพลาดที่ไม่รู้จัก');
+                    }
+                })
+                .catch(error => {
+                    alert(`เกิดข้อผิดพลาด: ${error.message}`);
+                    button.disabled = false;
+                    button.innerHTML = 'สร้างใบสั่งผลิต';
+                });
+            }
+
+            // *** หมายเหตุ: สคริปต์นี้ไม่ได้ใช้ fetchWithAuth() ***
+            // เช่นกัน หาก API endpoint นี้ต้องการการยืนยันตัวตน
+            // คุณอาจต้องเปลี่ยนไปใช้ fetchWithAuth(`/api/sales-orders/${soId}`)
+            fetch(`/api/sales-orders/${soId}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    const { details, items } = data.data;
+
+                    // Populate SO Header
+                    document.getElementById('so-number-header').textContent = details.so_number;
+
+                    // Populate Customer Info
+                    document.getElementById('customer-info').innerHTML = `
+                        <strong>${details.customer_name}</strong><br>
+                        ${details.customer_address || 'ไม่มีข้อมูลที่อยู่'}<br>
+                        โทร: ${details.customer_phone || '-'}<br>
+                        อีเมล: ${details.customer_email || '-'}
+                    `;
+
+                    // Populate SO Info
+                    const soInfo = `
+                        <strong>เลขที่ SO:</strong> ${details.so_number}<br>
+                        <strong>เลขที่ PO ลูกค้า:</strong> ${details.customer_po_number || '-'}<br>
+                        <strong>วันที่สั่ง:</strong> ${formatDate(details.order_date)}<br>
+                        <strong>วันที่ต้องการ:</strong> ${formatDate(details.due_date)}<br>
+                        <strong>ผู้สร้างรายการ:</strong> ${details.created_by_name || '-'}<br>
+                        <strong>สถานะ:</strong> <span class="badge bg-secondary">${details.status}</span>
+                    `;
+                    document.getElementById('so-info').innerHTML = soInfo;
+
+                    // Populate Items Table
+                    const itemsTbody = document.getElementById('items-table-body');
+                    itemsTbody.innerHTML = '';
+                    if (items && items.length > 0) {
+                        items.forEach((item, index) => {
+                            itemsTbody.innerHTML += `
+                                <tr>
+                                    <td class="text-center">${index + 1}</td>
+                                    <td>
+                                        <div>${item.item_name}</div>
+                                        <div class="text-muted">${item.item_code}</div>
+                                    </td>
+                                    <td class="text-center">${item.quantity}</td>
+                                    <td class="text-end">${formatNumber(item.unit_price)}</td>
+                                    <td class="text-end">${formatNumber(item.total_price)}</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        itemsTbody.innerHTML = '<tr><td colspan="5" class="text-center">ไม่พบรายการสินค้า</td></tr>';
+                    }
+
+                    // Populate Grand Total
+                    document.getElementById('grand-total').textContent = formatNumber(details.total_amount);
+                    
+                    // === เรียกใช้ฟังก์ชันสร้างปุ่ม ===
+                    populateActionButtons(details);
+                })
+                .catch(error => {
+                    console.error('Error fetching SO details:', error);
+                    document.getElementById('invoice-card').innerHTML = '<div class="card-body text-center text-danger"><h3>เกิดข้อผิดพลาด</h3><p>ไม่สามารถโหลดข้อมูลใบสั่งขายได้</p></div>';
+                });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>จัดการเครื่องจักร - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">จัดการเครื่องจักร (Machine Management)</h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                data-bs-target="#modal-add-machine">
+                                เพิ่มเครื่องจักรใหม่
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>รหัสเครื่องจักร</th>
+                                        <th>ชื่อเครื่องจักร</th>
+                                        <th>ประเภท</th>
+                                        <th>สถานะ</th>
+                                        <th>หมายเหตุ</th>
+                                        <th class="w-1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="machines-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Machine Modal -->
+    <div class="modal modal-blur fade" id="modal-edit-machine" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form id="edit-machine-form">
+                    <input type="hidden" name="id" id="edit-machine-id">
+                    <div class="modal-header">
+                        <h5 class="modal-title">แก้ไขข้อมูลเครื่องจักร</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">รหัสเครื่องจักร</label>
+                            <input type="text" class="form-control" name="machine_code" id="edit-machine-code" disabled
+                                readonly>
+                            <small class="form-hint">รหัสเครื่องจักรไม่สามารถแก้ไขได้</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">ชื่อเครื่องจักร</label>
+                            <input type="text" class="form-control" name="machine_name" id="edit-machine-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">ประเภทเครื่องจักร</label>
+                            <input type="text" class="form-control" name="machine_type" id="edit-machine-type">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">หมายเหตุ</label>
+                            <textarea class="form-control" name="notes" id="edit-machine-notes" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" class="btn btn-link link-secondary" data-bs-dismiss="modal">ยกเลิก</a>
+                        <button type="submit" class="btn btn-primary ms-auto">บันทึกการแก้ไข</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal modal-blur fade" id="modal-add-machine" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form id="add-machine-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title">เพิ่มเครื่องจักรใหม่</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                            id="add-machine-modal-close-btn"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3"><label class="form-label">รหัสเครื่องจักร</label><input type="text"
+                                class="form-control" name="machine_code" required></div>
+                        <div class="mb-3"><label class="form-label">ชื่อเครื่องจักร</label><input type="text"
+                                class="form-control" name="machine_name" required></div>
+                        <div class="mb-3"><label class="form-label">ประเภทเครื่องจักร</label><input type="text"
+                                class="form-control" name="machine_type"></div>
+                        <div class="mb-3"><label class="form-label">หมายเหตุ</label><textarea class="form-control"
+                                name="notes" rows="3"></textarea></div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" class="btn btn-link link-secondary" data-bs-dismiss="modal">ยกเลิก</a>
+                        <button type="submit" class="btn btn-primary ms-auto">บันทึก</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let editMachineModal;
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/machines.html"]');
+                    if (activeLink) activeLink.classList.add('active');
+                } catch (error) { console.error("Could not load sidebar:", error.message); }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) { console.error("Could not load user info:", error.message); }
+            }
+
+            function initializeMachinePage() {
+                const tbody = document.getElementById('machines-table-body');
+                const addForm = document.getElementById('add-machine-form');
+                const editForm = document.getElementById('edit-machine-form');
+
+                let allMachines = []; // Store machines data globally within this scope
+
+                editMachineModal = new bootstrap.Modal(document.getElementById('modal-edit-machine'));
+
+                async function fetchMachines() {
+                    console.log("Fetching machines...");
+                    try {
+                        const [machinesRes, plcStatusRes, plcConfigRes] = await Promise.all([
+                            fetchWithAuth('/api/machines?t=' + new Date().getTime()),
+                            fetch('http://192.168.2.5:5000/api/data').catch(e => { console.warn("PLC API fetch failed (might be offline):", e); return null; }),
+                            fetch('http://192.168.2.5:5000/api/plc-configs').catch(e => { console.warn("PLC Config fetch failed:", e); return null; })
+                        ]);
+
+                        const machinesData = await machinesRes.json();
+                        const plcStatusData = plcStatusRes ? await plcStatusRes.json() : {};
+                        const machineToPlcMap = plcConfigRes ? await plcConfigRes.json() : {};
+
+                        console.log("Machines Data:", machinesData);
+
+                        tbody.innerHTML = '';
+                        allMachines = machinesData.data || [];
+
+                        if (allMachines.length > 0) {
+                            allMachines.forEach(mc => {
+                                const plcName = machineToPlcMap[mc.machine_code];
+                                const plcInfo = plcName ? plcStatusData[plcName] : null;
+                                const isOnline = plcInfo && plcInfo.is_connected;
+
+                                let statusBadge;
+                                let notesHtml;
+
+                                if (isOnline) {
+                                    const statusMap = {
+                                        'idle': { color: 'secondary', text: 'Stop' },
+                                        'running': { color: 'success', text: 'Running' },
+                                        'down': { color: 'danger', text: 'Alarm' },
+                                        'maintenance': { color: 'warning', text: 'Maintenance' }
+                                    };
+                                    statusBadge = statusMap[mc.status] || { color: 'secondary', text: mc.status };
+                                    notesHtml = `<span class="badge bg-success-lt">Online</span>`;
+                                } else {
+                                    statusBadge = { color: 'secondary', text: 'Idle' };
+                                    notesHtml = `<span class="badge bg-danger-lt">Offline</span>`;
+                                }
+
+                                const row = `
+                                    <tr>
+                                        <td>${mc.machine_code}</td>
+                                        <td>${mc.machine_name}</td>
+                                        <td>${mc.machine_type || '-'}</td>
+                                        <td><span class="badge bg-${statusBadge.color}-lt">${statusBadge.text}</span></td>
+                                        <td>${notesHtml}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="openEditMachineModal(${mc.id})">
+                                                Edit
+                                            </button>
+                                        </td>
+                                    </tr>`;
+                                tbody.insertAdjacentHTML('beforeend', row);
+                            });
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่พบข้อมูลเครื่องจักรในระบบ</td></tr>';
+                        }
+                    } catch (error) {
+                        console.error('Failed to fetch machines:', error);
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">ไม่สามารถโหลดข้อมูลได้: ' + error.message + '</td></tr>';
+                    }
+                }
+
+                // Expose function to global scope
+                window.openEditMachineModal = (id) => {
+                    const machine = allMachines.find(m => m.id === id);
+                    if (!machine) {
+                        console.error("Machine not found for ID:", id);
+                        return;
+                    }
+                    document.getElementById('edit-machine-id').value = machine.id;
+                    document.getElementById('edit-machine-code').value = machine.machine_code;
+                    document.getElementById('edit-machine-name').value = machine.machine_name;
+                    document.getElementById('edit-machine-type').value = machine.machine_type || '';
+                    document.getElementById('edit-machine-notes').value = machine.notes || '';
+                    editMachineModal.show();
+                };
+
+                editForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const id = document.getElementById('edit-machine-id').value;
+                    const machine_name = document.getElementById('edit-machine-name').value;
+                    const machine_type = document.getElementById('edit-machine-type').value;
+                    const notes = document.getElementById('edit-machine-notes').value;
+
+                    try {
+                        const response = await fetchWithAuth(`/api/machines/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ machine_name, machine_type, notes })
+                        });
+                        if (response.ok) {
+                            editMachineModal.hide();
+                            fetchMachines(); // Refresh table
+                        } else {
+                            const resJson = await response.json();
+                            alert('Error: ' + (resJson.error || 'Update failed'));
+                        }
+                    } catch (error) {
+                        console.error('Error updating machine:', error);
+                        alert('Connection error');
+                    }
+                });
+
+                addForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const formData = new FormData(addForm);
+                    const data = Object.fromEntries(formData.entries());
+
+                    try {
+                        const response = await fetchWithAuth('/api/machines', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        if (response.ok) {
+                            document.getElementById('add-machine-modal-close-btn').click();
+                            addForm.reset();
+                            await fetchMachines();
+                        } else {
+                            alert('เกิดข้อผิดพลาดในการเพิ่มเครื่องจักร');
+                        }
+                    } catch (error) {
+                        console.error('Error submitting form:', error);
+                        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                    }
+                });
+
+                fetchMachines();
+            }
+
+            // --- เรียกใช้งานฟังก์ชันทั้งหมด ---
+            loadSidebar();
+            loadUserInfo();
+            initializeMachinePage();
+        });
+    </script>
+</body>
+
+</html>

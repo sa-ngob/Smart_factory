@@ -1,0 +1,84 @@
+Smart Factory System Architecture
+=================================
+
+1. Overview
+-----------
+The Smart Factory System is a real-time monitoring and management platform designed for manufacturing environments (Injection Molding). It integrates direct machine communication (PLC), a centralized database, and a web-based dashboard for visualization and control.
+
+2. Technology Stack
+-------------------
+- **Frontend:** HTML5, Bootstrap 5 (Tabler UI), Chart.js (Visualization), JavaScript (Vanilla).
+- **Backend (Web API):** Node.js with Express.
+- **Backend (Machine Interface):** Python (Flask) with PyModbus.
+- **Database:** PostgreSQL (v12+).
+- **Containerization:** Docker & Docker Compose.
+
+3. Architecture Components
+--------------------------
+
+### A. Machine Layer (The Source)
+- **PLCs (Programmable Logic Controllers):** 
+  - Devices: Mitsubishi/Delta PLCs (simulated or physical).
+  - Protocol: Modbus TCP/IP.
+  - Data Points: Machine Status (Running/Idle/Alarm), Mold Count (Production Cycles), Temperatures (Core, Cavity, Dry), Cycle Time.
+
+### B. Python PLC Service (`smart_factory_plc` container)
+- **Role:** High-frequency data collector and protocol translator.
+- **Core Script:** `app_fixed.py` (Flask Application).
+- **Functions:**
+  1. **Polling:** Continuously polls PLCs every ~5 seconds using `pymodbus`.
+  2. **Data Processing:** Decodes Modbus registers (Coils, Holding Registers) into human-readable values.
+  3. **Database Sync:** Directly inserts raw machine data into the PostgreSQL `machine_data` table.
+  4. **Log Logic:** Detects status changes (e.g., Running -> Stop) and logs them to `machine_status_logs`.
+  5. **Write Interface:** Exposes HTTP endpoints for the Node.js backend to send commands (e.g., "Start Job") back to the PLCs.
+
+### C. PostgreSQL Database (`smart_factory_db` container)
+- **Role:** Centralized data storage for the entire ecosystem.
+- **Key Tables:**
+  - `machines`: Master data for machine configurations.
+  - `machine_data`: High-volume table storage for real-time sensor logs (Time-series data).
+  - `manufacturing_orders` (MO): Production planning and status.
+  - `production_records`: Aggregated production outcomes (Good/Scrap counts).
+  - `items`, `molds`: Master data for inventory and tooling.
+
+### D. Node.js Web Backend (`smart_factory_web` container)
+- **Role:** Main application server, business logic, and API provider for the Frontend.
+- **Core File:** `server.js` & `routes/*.js`.
+- **Functions:**
+  1. **Authentication:** User login/session management (connect-pg-simple).
+  2. **Dashboard APIs:** Aggregates SQL queries to serve data for visualization (e.g., `/api/dashboard/mo-details`).
+  3. **Business Logic:** Handles Job Start/Stop logic, Inventory management, and Quality logging.
+  4. **Command Relay:** Sends control commands to the Python Service (via HTTP) when a user interacts with the UI (e.g., "Start Machine").
+
+### E. Frontend UI (Client Browser)
+- **Role:** User Interface for Operators and Managers.
+- **Key Pages:**
+  - `mo_dashboard.html`: Real-time analysis of specific production orders (MOs).
+  - `production-dashboard.html`: Birds-eye view of all machine statuses.
+- **Interaction:** Fetches JSON data from the Node.js API and renders dynamic charts (Chart.js) and tables.
+
+4. Data Flow Examples
+---------------------
+
+### Scenario 1: Real-time Monitoring
+1. **PLC** updates internal registers (e.g., Mold Count increases).
+2. **Python Service** polls PLC, detects change.
+3. **Python Service** inserts new row into PostgreSQL `machine_data`.
+4. **User** views Dashboard.
+5. **Frontend** polls Node.js API every X seconds.
+6. **Node.js** queries PostgreSQL for latest data (including calculations like Cycle Time).
+7. **Frontend** updates Charts/KPIs.
+
+### Scenario 2: Starting a Job (Two-Way Control)
+1. **User** clicks "Start Job" on Web UI.
+2. **Node.js** receives request, updates MO status in PostgreSQL to "In Progress".
+3. **Node.js** sends HTTP POST to **Python Service** with Job Details (MO Number, Target Qty).
+4. **Python Service** connects to PLC via Modbus TCP.
+5. **Python Service** writes Job Parameters to specific PLC Holding Registers.
+6. **PLC** accepts data, acknowledges (Handshake), and machine operation begins.
+
+5. Deployment & Infrastructure
+------------------------------
+- The entire system is orchestrated via **Docker Compose**.
+- **Networking:** All containers (`web`, `plc`, `postgres`) share a private bridge network (`smart-factory-net`).
+- **Volumes:** Code is volume-mapped for hot-reloading (development); Database data is persisted in a docker volume.

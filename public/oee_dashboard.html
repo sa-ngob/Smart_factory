@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Advanced OEE Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col"><h2 class="page-title">Advanced OEE Dashboard</h2></div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <select class="form-select d-inline-block w-auto me-2" id="machine-filter">
+                                <option value="all">All Machines</option>
+                            </select>
+                            <div class="btn-group" id="period-filter">
+                                <button type="button" class="btn" data-period="day">Day</button>
+                                <button type="button" class="btn active" data-period="week">Week</button>
+                                <button type="button" class="btn" data-period="month">Month</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="row row-cards">
+                        <div class="col-lg-4"><div class="card"><div class="card-body text-center"><h3 class="card-title mb-1">Current OEE Score</h3><div id="chart-main-oee-gauge"></div></div></div></div>
+                        <div class="col-lg-8"><div class="card"><div class="card-body"><h3 class="card-title">OEE Metrics</h3><div id="chart-oee-metrics-trend"></div></div></div></div>
+                        <div class="col-12"><h3 class="mt-4">Active Machines</h3><div class="row row-cards" id="machine-cards-container"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        
+        let charts = {};
+        let currentPeriod = 'week';
+        let currentMachine = 'all';
+
+        async function loadSidebar() {
+            try {
+                const response = await fetchWithAuth('/api/sidebar'); 
+                const sidebarHtml = await response.text();
+                document.getElementById('sidebar').innerHTML = sidebarHtml;
+                setActiveMenuItem();
+            } catch (error) { console.error("Could not load sidebar:", error); }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetchWithAuth('/api/user-info');
+                const data = await response.json();
+                if (data.success && data.displayName) {
+                    document.getElementById('display-username').textContent = data.displayName;
+                }
+            } catch (error) { console.error("Could not load user info:", error); }
+        }
+
+        async function loadMachineFilter() {
+            try {
+                // ✅ highlight: เปลี่ยนมาใช้ fetchWithAuth เพื่อความปลอดภัย
+                const response = await fetchWithAuth('/api/dashboard/machines');
+                const res = await response.json();
+                if (res.success) {
+                    const machineFilter = document.getElementById('machine-filter');
+                    res.data.forEach(m => {
+                        machineFilter.innerHTML += `<option value="${m.machine_code}">${m.machine_code}</option>`;
+                    });
+                }
+            } catch (error) { console.error("Could not load machine filter:", error); }
+        }
+
+        // ✅ highlight: แก้ไขฟังก์ชัน Render ทั้งหมดให้รองรับค่าว่าง (null) เพื่อป้องกันกราฟพัง
+        const renderMainGauge = (value) => {
+            const score = parseFloat((value || 0).toFixed(1)); // ถ้าค่าเป็น null ให้ใช้ 0 แทน
+            const options = { series: [score], chart: { type: 'radialBar', height: 250 }, plotOptions: { radialBar: { dataLabels: { value: { fontSize: '2.5rem' } } } }, labels: ['OEE'] };
+            if(charts.mainGauge) charts.mainGauge.updateOptions(options);
+            else { charts.mainGauge = new ApexCharts(document.querySelector("#chart-main-oee-gauge"), options); charts.mainGauge.render(); }
+        };
+
+        const renderTrendChart = (data) => {
+            const metrics = data || []; // ถ้า data เป็น null ให้ใช้ array ว่างแทน
+            const options = {
+                series: [
+                    { name: 'OEE', data: metrics.map(d => parseFloat((d.oee || 0).toFixed(1))) },
+                    { name: 'Quality', data: metrics.map(d => parseFloat((d.quality || 0).toFixed(1))) },
+                    { name: 'Performance', data: metrics.map(d => parseFloat((d.performance || 0).toFixed(1))) },
+                    { name: 'Availability', data: metrics.map(d => parseFloat((d.availability || 0).toFixed(1))) },
+                ],
+                chart: { type: 'line', height: 250, toolbar: { show: false } },
+                xaxis: { categories: metrics.map(d => new Date(d.date).toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})) },
+                stroke: { width: 3, curve: 'smooth' },
+                yaxis: { min: 0, max: 100, tickAmount: 5 },
+                tooltip: { y: { formatter: (val) => `${val}%` } }
+            };
+            if(charts.trend) charts.trend.updateOptions(options);
+            else { charts.trend = new ApexCharts(document.querySelector("#chart-oee-metrics-trend"), options); charts.trend.render(); }
+        };
+
+        const createAndRenderMachineCards = (machines) => {
+            const container = document.getElementById('machine-cards-container');
+            container.innerHTML = '';
+            (machines || []).forEach(machine => {
+                const oee = machine.oee || 0;
+                let color = 'green';
+                if (oee < 85) color = 'yellow';
+                if (oee < 70) color = 'orange';
+                if (oee < 50) color = 'red';
+                const cardHTML = `<div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body text-center"><h4 class="card-title">${machine.machine_code}</h4><div id="chart-gauge-${machine.machine_code.replace('-','')}"></div></div></div></div>`;
+                container.innerHTML += cardHTML;
+                const gaugeOptions = { series: [parseFloat(oee.toFixed(1))], chart: { type: 'radialBar', height: 150, sparkline: { enabled: true } }, plotOptions: { radialBar: { hollow: { size: '65%' }, dataLabels: { value: { fontSize: '1.5rem', color: `var(--tblr-${color})`} } }}, colors: [`var(--tblr-${color})`]};
+                new ApexCharts(document.querySelector(`#chart-gauge-${machine.machine_code.replace('-','')}`), gaugeOptions).render();
+            });
+        };
+
+        const fetchData = async () => {
+            try {
+                // ✅ highlight: เปลี่ยนมาใช้ fetchWithAuth เพื่อความปลอดภัยและเสถียรภาพ
+                const response = await fetchWithAuth(`/api/dashboard/advanced-oee?period=${currentPeriod}&machine=${currentMachine}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error);
+                
+                const { currentOee, oeeMetrics, activeMachines } = result.data;
+                renderMainGauge(currentOee);
+                renderTrendChart(oeeMetrics);
+                createAndRenderMachineCards(activeMachines);
+            } catch (e) { 
+                console.error("Failed to fetch OEE data:", e); 
+                document.getElementById('machine-cards-container').innerHTML = '<div class="alert alert-danger">Failed to load OEE data. Please try again.</div>';
+            }
+        };
+
+        document.getElementById('period-filter').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
+                currentPeriod = e.target.dataset.period;
+                document.querySelectorAll('#period-filter .btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                fetchData();
+            }
+        });
+        document.getElementById('machine-filter').addEventListener('change', (e) => { currentMachine = e.target.value; fetchData(); });
+
+        loadSidebar();
+        loadUserInfo();
+        loadMachineFilter();
+        fetchData();
+    });
+    </script>
+</body>
+</html>

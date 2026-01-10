@@ -1,0 +1,21 @@
+2025-12-09T14:07:11.474Z - POST /api/invoices ERROR: column "customer_po_number" of relation "invoices" does not exist
+Stack: error: column "customer_po_number" of relation "invoices" does not exist
+    at E:\Dev_Project\smart-factory-tabler - R21\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async E:\Dev_Project\smart-factory-tabler - R21\routes\invoices.js:110:35
+Body: {"customer_id":"3","invoice_number":"IV-2512-0001","issue_date":"2025-12-09","due_date":"2026-01-08","customer_po_number":"tpo, ","sub_total":10500,"tax_amount":735,"grand_total":11235,"items":[{"item_code":"FG-0001","item_name":"Hub1.8 pro-9","quantity":100,"unit_price":"5.00","total_price":500},{"item_code":"FG-0001","item_name":"Hub1.8 pro-9","quantity":1000,"unit_price":"10.00","total_price":10000}],"delivery_order_ids":["3","4"]}
+
+2025-12-09T14:12:16.957Z - POST /api/invoices ERROR: column "created_by" of relation "invoices" does not exist
+Stack: error: column "created_by" of relation "invoices" does not exist
+    at E:\Dev_Project\smart-factory-tabler - R21\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async E:\Dev_Project\smart-factory-tabler - R21\routes\invoices.js:110:35
+Body: {"customer_id":"3","invoice_number":"IV-2512-0001","issue_date":"2025-12-09","due_date":"2026-01-08","customer_po_number":"tpo, ","sub_total":10500,"tax_amount":735,"grand_total":11235,"items":[{"item_code":"FG-0001","item_name":"Hub1.8 pro-9","quantity":100,"unit_price":"5.00","total_price":500},{"item_code":"FG-0001","item_name":"Hub1.8 pro-9","quantity":1000,"unit_price":"10.00","total_price":10000}],"delivery_order_ids":["3","4"]}
+
+2025-12-09T14:18:40.609Z - POST /api/invoices ERROR: column "created_by" of relation "invoices" does not exist
+Stack: error: column "created_by" of relation "invoices" does not exist
+    at E:\Dev_Project\smart-factory-tabler - R21\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async E:\Dev_Project\smart-factory-tabler - R21\routes\invoices.js:110:35
+Body: {"customer_id":"3","invoice_number":"IV-2512-0001","issue_date":"2025-12-09","due_date":"2026-01-08","customer_po_number":"tpo, ","sub_total":10500,"tax_amount":735,"grand_total":11235,"items":[{"item_code":"FG-0001","item_name":"Hub1.8 pro-9","quantity":100,"unit_price":"5.00","total_price":500},{"item_code":"FG-0001","item_name":"Hub1.8 pro-9","quantity":1000,"unit_price":"10.00","total_price":10000}],"delivery_order_ids":["3","4"]}
+

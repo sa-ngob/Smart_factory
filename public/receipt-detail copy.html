@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>รายละเอียดใบเสร็จรับเงิน - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #f0f2f5; font-family: 'Sarabun', sans-serif; }
+        .page-body { display: flex; justify-content: center; padding: 2rem 0; }
+        .a4-page {
+            background: white; width: 21cm; min-height: 29.7cm; padding: 1.5cm;
+            margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: flex;
+            flex-direction: column; color: #333; font-size: 10pt; position: relative;
+        }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+        .document-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .company-details { text-align: right; font-size: 9pt; }
+        .document-meta { display: flex; justify-content: space-between; margin-top: 1rem; padding: 0.5rem; }
+        .document-title { text-align: center; margin: 1rem 0; }
+        .document-title h2 { font-size: 1.5rem; font-weight: bold; margin: 0; display: inline-block; padding: 0.25rem 1rem; }
+        .items-table th, .items-table td { border: 1px solid #000; padding: 8px; text-align: left; vertical-align: middle; }
+        .items-table thead { background-color: #D5EDB3; }
+        .items-table th { font-weight: bold; text-align: center; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .document-footer { margin-top: auto; padding-top: 0.5rem; }
+        .summary-row { display: flex; align-items: center; background-color: #D5EDB3; border: 1px solid #000; border-top: none; }
+        .summary-row > div { padding: 8px; }
+        .signature-section { display: flex; justify-content: space-between; align-items: stretch; text-align: center; margin-top: 1rem; }
+        .signature-box { width: 32%; border: 1px solid #000; padding: 0.5rem; display: flex; flex-direction: column; justify-content: space-between; }
+        .signature-line { border-bottom: 1px dotted #333; margin: 2rem 0 0.5rem 0; height: 1.5rem; }
+        .payment-details-box { text-align: left; }
+        .payment-details-box div { margin-bottom: 0.25rem; }
+        .checkbox-box { display: inline-block; width: 12px; height: 12px; border: 1px solid #000; margin-right: 5px; vertical-align: middle; }
+        
+        @media print {
+            @page { size: A4; margin: 1cm; }
+            html, body { margin: 0; padding: 0; width: 100%; }
+            .page-wrapper, .page-body { padding: 0; margin: 0; }
+            .page-header, .navbar { display: none !important; }
+            .a4-page {
+                box-shadow: none; margin: 0; width: 100%; min-height: initial; padding: 0;
+                page-break-after: always;
+            }
+            .items-table thead {
+                display: table-header-group;
+                background-color: #f8f9fa !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .items-table tbody tr { page-break-inside: avoid; }
+            .items-table, .document-footer { page-break-inside: auto; }
+            body { counter-reset: page; }
+            .page-number {
+                display: block; position: absolute; bottom: 10px; right: 20px; font-size: 9pt;
+            }
+            .page-number::after {
+                counter-increment: page;
+                content: "หน้า " counter(page);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg d-print-none" data-bs-theme="dark"><div class="container-fluid" id="sidebar-container"></div></aside>    
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl"><div class="row g-2 align-items-center"><div class="col"><h2 class="page-title">เอกสารใบเสร็จรับเงิน</h2><h3 class="text-muted" id="receipt-number-header"></h3></div><div class="col-auto ms-auto d-print-none btn-list"><a href="/receipts.html" class="btn btn-outline-secondary">กลับ</a><button type="button" class="btn btn-primary" onclick="window.print();">พิมพ์</button></div></div></div>
+            </div>
+            <div class="page-body" id="page-content-wrapper">
+                 </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const receiptId = urlParams.get('id');
+            const pageWrapper = document.getElementById('page-content-wrapper');
+
+            if (!receiptId) {
+                document.body.innerHTML = '<h1>ไม่พบ ID ใบเสร็จ</h1>';
+                return;
+            }
+
+            fetch('api/sidebar').then(res => res.text()).then(data => { document.getElementById('sidebar-container').innerHTML = data; });
+
+            const formatDate = (dateString) => new Date(dateString).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const formatCurrency = (num) => (num || 0).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            const bahttext = (number) => { if (number === null || isNaN(number) || number === 0) { return "ศูนย์บาทถ้วน"; } const thaiNumbers = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"]; const thaiUnits = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"]; let [baht, satang] = Number(number).toFixed(2).split('.').map(part => parseInt(part)); function convert(numStr) { let output = ""; const len = numStr.length; for (let i = 0; i < len; i++) { const digit = parseInt(numStr[i]); if (digit === 0) continue; const unit = thaiUnits[len - i - 1]; let digitText = thaiNumbers[digit]; if (unit === 'สิบ' && digit === 2) digitText = "ยี่"; else if (unit === 'สิบ' && digit === 1) digitText = ""; else if (unit === '' && digit === 1 && len > 1 && parseInt(numStr[len - 2]) !== 0) digitText = "เอ็ด"; output += digitText + unit; } return output; } let bahtText = ""; if (baht.toString().length > 7) { const millionPart = baht.toString().substring(0, baht.toString().length - 6); const remainingPart = baht.toString().substring(baht.toString().length - 6); bahtText = convert(millionPart) + "ล้าน" + convert(remainingPart); } else { bahtText = convert(baht.toString()); } bahtText = bahtText.replace(/หนึ่งล้าน/g, "เอ็ดล้าน"); let satangText = ""; if (satang > 0) { const satangStr = satang.toString().padStart(2, '0'); let tempSatang = ""; const d1 = parseInt(satangStr[0]); const d2 = parseInt(satangStr[1]); if (d1 > 0) { tempSatang += (d1 === 2 ? "ยี่" : thaiNumbers[d1]) + "สิบ"; } if (d2 > 0) { tempSatang += (d1 > 0 && d2 === 1 ? "เอ็ด" : thaiNumbers[d2]); }; satangText = tempSatang + "สตางค์"; } else { satangText = "ถ้วน"; } return bahtText + "บาท" + satangText; };
+
+            function createPageHTML(details, paidInvoices) {
+                const ref_bn_number = details.ref_bn_number || '-';
+                const payment_terms = details.payment_terms || '-';
+                
+                const headerHTML = `
+                    <div class="document-header">
+                        <div><a href="/"><img src="/uploads/items/espa-logo.png" alt="ES-PA Logo" style="width: 100px;"></a></div>
+                        <div class="company-details">
+                            <p style="font-size: 1.1rem; font-weight: bold; margin: 0;">บริษัท เอส ป้า เอ็นจิเนียริ่ง จำกัด</p>
+                            ES PA ENGINEERING CO.,LTD.<br>
+                            99/2 หมู่ 2 ต.บ่อตาโล่ อ.วังน้อย จ.พระนครศรีอยุธยา 13170<br>
+                            Tel: 089-1804303 เลขประจำตัวผู้เสียภาษีอากร 0135555011210
+                        </div>
+                    </div>
+                    <div class="document-title"><h2>ใบเสร็จรับเงิน / RECEIPT</h2></div>
+                    <div class="document-meta">
+                        <div style="width: 58%;">
+                            <strong>ชื่อ/Name:</strong>
+                            <div style="padding-left: 1rem;">
+                                <strong>${details.customer_name || ''}</strong><br>
+                                ${details.customer_address || ''}<br>
+                                Tax ID: ${details.customer_tax_id || '-'}
+                            </div>
+                        </div>
+                        <div style="width: 40%;">
+                             <p><strong>เลขที่/No:</strong> <span>${details.receipt_number}</span></p>
+                             <p><strong>วันที่ออกใบเสร็จ/Date Issue:</strong> <span>${formatDate(details.payment_date)}</span></p>
+                             <p><strong>เอกสารอ้างอิง/Ref No:</strong> <span>${ref_bn_number}</span></p>
+                             <p><strong>เงื่อนไขการชำระเงิน/Terms:</strong> <span>${payment_terms}</span></p>
+                        </div>
+                    </div>
+                `;
+
+                const tableHeaderHTML = `
+                    <thead>
+                        <tr>
+                            <th style="width: 8%;">ลำดับ No.</th>
+                            <th style="width: 15%;">เลขที่ใบกำกับ Invoice No</th>
+                            <th style="width: 15%;">วันที่ตามใบกำกับ Invoice Date</th>
+                            <th class="text-right" style="width: 17%;">ยอดเงินตามบิล Invoice Amt</th>
+                            <th class="text-right" style="width: 15%;">ภาษี VAT 7%</th>
+                            <th class="text-right" style="width: 15%;">รวมยอดเงิน Total Amt</th>
+                            <th>หมายเหตุ Remark</th>
+                        </tr>
+                    </thead>
+                `;
+                
+                const ROWS_PER_PAGE = 15;
+                let invoicesHTML = paidInvoices.map((inv, index) => `
+                    <tr>
+                        <td class="text-center">${index + 1}</td>
+                        <td class="text-center">${inv.invoice_number}</td>
+                        <td class="text-center">${formatDate(inv.issue_date)}</td>
+                        <td class="text-right">${formatCurrency(inv.sub_total)}</td>
+                        <td class="text-right">${formatCurrency(inv.tax_amount)}</td>
+                        <td class="text-right">${formatCurrency(inv.grand_total)}</td>
+                        <td></td>
+                    </tr>
+                `).join('');
+
+                const emptyRowsNeeded = ROWS_PER_PAGE - paidInvoices.length;
+                if (emptyRowsNeeded > 0) {
+                    for (let i = 0; i < emptyRowsNeeded; i++) {
+                        invoicesHTML += '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+                    }
+                }
+
+                const footerHTML = `
+                    <div class="document-footer">
+                         <div class="summary-row">
+                             <div style="width: 60%;"><strong>Remark :</strong> ${details.notes || ''}</div>
+                             <div style="width: 20%;" class="text-right"><strong>จำนวนเงิน (THB):</strong></div>
+                             <div style="width: 20%;" class="text-right">${formatCurrency(details.total_amount_paid)}</div>
+                         </div>
+                         <div class="summary-row total">
+                             <div style="width: 60%;"><strong>(Baht)บาท :</strong> ${bahttext(details.total_amount_paid)}</div>
+                             <div style="width: 20%;" class="text-right"><strong>Total(AMT):</strong></div>
+                             <div style="width: 20%;" class="text-right"><strong>${formatCurrency(details.total_amount_paid)} THB</strong></div>
+                         </div>
+                         <div class="mt-3">
+                            <p style="font-size: 9pt; margin: 0;"><strong>หมายเหตุ</strong></p>
+                            <ul style="padding-left: 1.5rem; margin: 0; font-size: 9pt;">
+                                <li>กรุณาสั่งจ่ายเช็คขีกคร่อมในนาม บริษัท เอส ป้า เอ็นจิเนียริ่ง จำกัด เท่านั้น</li>
+                                <li>ใบเสร็จฉบับนี้จะสมบูรณ์ก็ต่อเมื่อบริษัทฯ เรียกเก็บเงินตามเช็คเรียบร้อยแล้ว</li>
+                            </ul>
+                         </div>
+                        <div class="signature-section">
+                            <div class="signature-box">
+                                <div>ในนาม บริษัท เอส ป้า เอ็นจิเนียริ่ง จำกัด</div>
+                                <div>For ES PA ENGINEERING Co., Ltd.</div>
+                                <div class="signature-line"></div>
+                                <div>วันที่: ......./......./.........</div>
+                            </div>
+                            <div class="signature-box">
+                               <div class="signature-line"></div>
+                                <p>ผู้รับเงิน</p>
+                                <div>วันที่: ......./......./.........</div>
+                            </div>
+                            <div class="signature-box payment-details-box">
+                                <div><strong>รายละเอียดการรับชำระ</strong></div>
+                                <div><span class="checkbox-box">${details.payment_method === 'เงินสด' ? '✔' : ''}</span> เงินสด</div>
+                                <div><span class="checkbox-box">${details.payment_method === 'เช็ค' ? '✔' : ''}</span> เช็คธนาคาร .........................</div>
+                                <div style="padding-left: 21px;">ลงวันที่ ................. เลขที่ .................</div>
+                                <div><span class="checkbox-box">${details.payment_method === 'โอนเงิน' ? '✔' : ''}</span> เงินโอนธนาคาร ....................</div>
+                                <div><span class="checkbox-box"></span> อื่นๆ .................................</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return `<div class="a4-page"><div class="main-content">${headerHTML}<table class="items-table">${tableHeaderHTML}<tbody>${invoicesHTML}</tbody></table>${footerHTML}</div></div>`;
+            }
+
+            fetch(`/api/receipts/${receiptId}`)
+                .then(response => response.ok ? response.json() : Promise.reject('Network error'))
+                .then(result => {
+                    if (!result.success) throw new Error(result.error);
+                    const { details, invoices } = result.data;
+                    document.title = `Receipt ${details.receipt_number}`;
+                    document.getElementById('receipt-number-header').textContent = details.receipt_number;
+                    pageWrapper.innerHTML = createPageHTML(details, invoices);
+                })
+                .catch(error => {
+                    console.error('Error fetching Receipt details:', error);
+                    pageWrapper.innerHTML = '<div class="a4-page"><p class="text-danger text-center">เกิดข้อผิดพลาด</p></div>';
+                });
+        });
+    </script>
+</body>
+</html>

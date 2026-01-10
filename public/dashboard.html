@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Welcome - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Chakra+Petch:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --tblr-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+            --industrial-font: 'Chakra Petch', sans-serif;
+            --neon-blue: #206bc4;
+            --neon-green: #2fb344;
+        }
+
+        body {
+            font-family: var(--tblr-font-sans-serif);
+        }
+
+        .page-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-image: url('/uploads/items/smart Factory.png');
+            background-size: cover;
+            background-position: center center;
+            position: relative;
+        }
+
+        /* Dark Overlay */
+        .page-wrapper::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.7) 100%);
+            z-index: 0;
+        }
+
+        .hero-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1000px;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        /* Glass Card Effect */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            /* More transparent */
+            backdrop-filter: blur(4px);
+            /* Reduced blur to see background */
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.8s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome-pre {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .welcome-title {
+            font-family: var(--industrial-font);
+            font-size: 4rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            background: -webkit-linear-gradient(45deg, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            /* -webkit-text-fill-color: transparent; */
+            text-shadow: 0 0 30px rgba(32, 107, 196, 0.3);
+            line-height: 1.1;
+        }
+
+        .user-greeting {
+            font-size: 1.5rem;
+            color: #cbd5e1;
+            margin-bottom: 3rem;
+            font-weight: 300;
+        }
+
+        .user-name {
+            color: #3b82f6;
+            /* Tabler Blue */
+            font-weight: 600;
+        }
+
+        /* Quick Access Grid */
+        .quick-access-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .access-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .access-card:hover {
+            background: rgba(32, 107, 196, 0.2);
+            /* Element of Blue overlap */
+            border-color: #206bc4;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(32, 107, 196, 0.4);
+        }
+
+        .access-icon {
+            width: 48px;
+            height: 48px;
+            color: #cbd5e1;
+            transition: color 0.3s;
+        }
+
+        .access-card:hover .access-icon {
+            color: #fff;
+        }
+
+        .access-title {
+            font-family: var(--industrial-font);
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        .access-desc {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        /* Running Text (Modern) */
+        .system-status {
+            margin-top: 2.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #2fb344;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #2fb344;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="hero-container">
+                <div class="glass-card">
+                    <div class="welcome-pre">Industrial IoT Platform</div>
+                    <h1 class="welcome-title">Smart Factory<br>System R21</h1>
+                    <div class="user-greeting">
+                        Welcome back, <span class="user-name" id="display-username">User</span>
+                    </div>
+
+                    <div class="quick-access-grid">
+                        <a href="/overview-dashboard.html" class="access-card">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon access-icon" width="24" height="24"
+                                viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                <path d="M4 4h6v8h-6z" />
+                                <path d="M4 16h6v4h-6z" />
+                                <path d="M14 12h6v8h-6z" />
+                                <path d="M14 4h6v4h-6z" />
+                            </svg>
+                            <span class="access-title">Overview</span>
+                            <!-- <span class="access-desc">ภาพรวมโรงงาน</span> -->
+                        </a>
+                        <a href="/production-dashboard.html" class="access-card">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon access-icon" width="24" height="24"
+                                viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                <path d="M12 9v4" />
+                                <path
+                                    d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" />
+                                <path d="M12 16h.01" />
+                            </svg>
+                            <span class="access-title">Production</span>
+                        </a>
+                        <a href="/inventory-dashboard.html" class="access-card">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon access-icon" width="24" height="24"
+                                viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                <path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" />
+                                <path d="M12 12l8 -4.5" />
+                                <path d="M12 12l0 9" />
+                                <path d="M12 12l-8 -4.5" />
+                            </svg>
+                            <span class="access-title">Inventory</span>
+                        </a>
+                        <a href="/sales-dashboard.html" class="access-card">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon access-icon" width="24" height="24"
+                                viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                <path d="M3 21l18 0" />
+                                <path d="M3 10l18 0" />
+                                <path d="M5 6l7 -3l7 3" />
+                                <path d="M4 10l0 11" />
+                                <path d="M20 10l0 11" />
+                                <path d="M8 14l0 3" />
+                                <path d="M12 14l0 3" />
+                                <path d="M16 14l0 3" />
+                            </svg>
+                            <span class="access-title">Sales</span>
+                        </a>
+                    </div>
+
+                    <div class="system-status">
+                        <div class="status-dot"></div>
+                        <span class="status-text">System Status: All Systems Operational (Online)</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                    setActiveMenuItem();
+                } catch (error) { console.error("Could not load sidebar:", error.message); }
+            }
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) { console.error("Could not load user info:", error.message); }
+            }
+            loadSidebar();
+            loadUserInfo();
+        });
+    </script>
+</body>
+
+</html>

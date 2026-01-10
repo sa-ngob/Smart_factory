@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>สร้างใบแจ้งหนี้ใหม่ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+            <div class="container-fluid" id="sidebar-container"></div>
+        </aside>
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl">
+                    <h2 class="page-title">สร้างใบแจ้งหนี้ใหม่</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label required">1. เลือกลูกค้า</label>
+                                    <select class="form-select" id="select-customer">
+                                        <option value="">-- กรุณาเลือกลูกค้า --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">เลขที่ Invoice</label>
+                                    <input type="text" class="form-control" id="invoice-number" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label required">วันที่ออกเอกสาร</label>
+                                    <input type="date" class="form-control" id="issue-date">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label required">วันที่ครบกำหนด</label>
+                                    <input type="date" class="form-control" id="due-date">
+                                </div>
+                            </div>
+                            <hr>
+
+                            <h4 class="mb-3">2. เลือกใบส่งของ (DO) ที่ต้องการรวมใน Invoice</h4>
+                            <div class="table-responsive mb-3" style="max-height: 250px;">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 1%;">เลือก</th>
+                                            <th>เลขที่ DO</th>
+                                            <th>วันที่ส่ง</th>
+                                            <th class="text-end">ยอดเงิน</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dos-table">
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">กรุณาเลือกลูกค้า</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <hr>
+
+                            <h4 class="mb-3">3. รายการสินค้าใน Invoice (สร้างอัตโนมัติ)</h4>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40%;">สินค้า</th>
+                                            <th class="text-center">จำนวน</th>
+                                            <th class="text-end">ราคา/หน่วย</th>
+                                            <th class="text-end">ราคารวม</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="invoice-items-table"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="row justify-content-end mt-3">
+                                <div class="col-lg-4 col-md-6">
+                                    <table class="table table-transparent">
+                                        <tbody>
+                                            <tr>
+                                                <td>ยอดรวมก่อนภาษี:</td>
+                                                <td class="text-end" id="sub-total">0.00</td>
+                                            </tr>
+                                            <tr>
+                                                <td>ภาษีมูลค่าเพิ่ม (7%):</td>
+                                                <td class="text-end" id="tax-amount">0.00</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">ยอดรวมสุทธิ:</td>
+                                                <td class="text-end fw-bold" id="grand-total">0.00</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-end">
+                            <a href="/invoices.html" class="btn">ยกเลิก</a>
+                            <button type="button" class="btn btn-primary" id="save-invoice-btn" disabled>บันทึก
+                                Invoice</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Helper functions
+            const formatCurrency = (num) => (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const formatDate = (date) => date ? new Date(date).toLocaleDateString('th-TH') : '';
+
+            // Layout & User Info Loading
+            async function initLayout() {
+                try {
+                    // Load Sidebar
+                    const sidebarRes = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await sidebarRes.text();
+                    document.getElementById('sidebar-container').innerHTML = sidebarHtml;
+
+                    // Load User Info (after sidebar is ready)
+                    const userRes = await fetchWithAuth('/api/user-info');
+                    const userData = await userRes.json();
+                    if (userData.success && userData.displayName) {
+                        const userDisplay = document.getElementById('display-username');
+                        if (userDisplay) userDisplay.textContent = userData.displayName;
+                    }
+                } catch (error) {
+                    console.error("Layout initialization error:", error);
+                }
+            }
+
+            let availableDOs = []; // Store all available DOs for the selected customer
+
+            async function populateCustomers() {
+                const select = document.getElementById('select-customer');
+                const response = await fetch('/api/entities?list_for=customer');
+                const result = await response.json();
+                if (result.data) {
+                    result.data.forEach(c => select.add(new Option(c.name, c.id)));
+                }
+            }
+
+            // ... Events ...
+            document.getElementById('select-customer').addEventListener('change', async function () {
+                const customerId = this.value;
+                const dosTable = document.getElementById('dos-table');
+                resetInvoiceDetails();
+                if (!customerId) {
+                    dosTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted">กรุณาเลือกลูกค้า</td></tr>';
+                    return;
+                }
+
+                dosTable.innerHTML = '<tr><td colspan="4" class="text-center">Loading...</td></tr>';
+                try {
+                    const response = await fetch(`/api/invoices/items-for-customer/${customerId}`);
+                    const result = await response.json();
+                    if (result.success && result.data.length > 0) {
+                        availableDOs = result.data;
+                        dosTable.innerHTML = availableDOs.map(d => `
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" name="do_ids" value="${d.do_id}"></td>
+                                <td>${d.do_number}</td><td>${formatDate(d.shipping_date)}</td>
+                                <td class="text-end">${formatCurrency(d.total_amount)}</td>
+                            </tr>`).join('');
+                    } else {
+                        availableDOs = [];
+                        dosTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted">ไม่พบใบส่งของที่รอออก Invoice</td></tr>';
+                    }
+                } catch (err) {
+                    dosTable.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading data.</td></tr>';
+                }
+            });
+
+            document.getElementById('dos-table').addEventListener('change', function () {
+                const selectedCheckboxes = document.querySelectorAll('input[name="do_ids"]:checked');
+                const selectedDoIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+                const invoiceItems = {};
+                let subTotal = 0;
+
+                availableDOs.forEach(d => {
+                    if (selectedDoIds.includes(d.do_id.toString())) {
+                        d.items.forEach(item => {
+                            if (invoiceItems[item.item_code]) {
+                                invoiceItems[item.item_code].quantity += item.quantity;
+                                invoiceItems[item.item_code].total_price += item.total_price;
+                            } else {
+                                invoiceItems[item.item_code] = { ...item };
+                            }
+                            subTotal += item.total_price;
+                        });
+                    }
+                });
+
+                updateInvoiceItemsTable(Object.values(invoiceItems));
+                updateTotals(subTotal);
+                document.getElementById('save-invoice-btn').disabled = selectedDoIds.length === 0;
+            });
+
+            document.getElementById('save-invoice-btn').addEventListener('click', async function () {
+                const selectedDoIds = Array.from(document.querySelectorAll('input[name="do_ids"]:checked')).map(cb => cb.value);
+                const poNumbers = new Set();
+                const itemsForPayload = [];
+
+                availableDOs.forEach(d => {
+                    if (selectedDoIds.includes(d.do_id.toString())) {
+                        poNumbers.add(d.customer_po_number);
+                        itemsForPayload.push(...d.items);
+                    }
+                });
+
+                const payload = {
+                    customer_id: document.getElementById('select-customer').value,
+                    invoice_number: document.getElementById('invoice-number').value,
+                    issue_date: document.getElementById('issue-date').value,
+                    due_date: document.getElementById('due-date').value,
+                    customer_po_number: Array.from(poNumbers).join(', '),
+                    sub_total: parseFloat(document.getElementById('sub-total').textContent.replace(/,/g, '')),
+                    tax_amount: parseFloat(document.getElementById('tax-amount').textContent.replace(/,/g, '')),
+                    grand_total: parseFloat(document.getElementById('grand-total').textContent.replace(/,/g, '')),
+                    items: itemsForPayload,
+                    delivery_order_ids: selectedDoIds
+                };
+
+                this.disabled = true; this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+                try {
+                    const response = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error);
+                    alert('Invoice saved successfully!');
+                    window.location.href = `/invoice-detail.html?id=${result.data.invoice_id}`;
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                    this.disabled = false; this.innerHTML = 'Save Invoice';
+                }
+            });
+
+            function updateInvoiceItemsTable(items) {
+                const itemsTable = document.getElementById('invoice-items-table');
+                itemsTable.innerHTML = items.map(item => `
+                    <tr><td>${item.item_name} (${item.item_code})</td><td class="text-center">${item.quantity.toLocaleString()}</td>
+                    <td class="text-end">${formatCurrency(item.unit_price)}</td><td class="text-end">${formatCurrency(item.total_price)}</td></tr>
+                `).join('');
+            }
+
+            function updateTotals(subTotal) {
+                const tax = subTotal * 0.07;
+                const grandTotal = subTotal + tax;
+                document.getElementById('sub-total').textContent = formatCurrency(subTotal);
+                document.getElementById('tax-amount').textContent = formatCurrency(tax);
+                document.getElementById('grand-total').textContent = formatCurrency(grandTotal);
+            }
+
+            function resetInvoiceDetails() {
+                availableDOs = [];
+                updateInvoiceItemsTable([]);
+                updateTotals(0);
+                document.getElementById('save-invoice-btn').disabled = true;
+            }
+
+            // Init
+            (async () => {
+                await initLayout(); // Wait for layout
+                await populateCustomers();
+
+                try {
+                    const invNumRes = await fetch('/api/invoices/next-invoice-number');
+                    const invNumResult = await invNumRes.json();
+                    if (invNumResult.success) document.getElementById('invoice-number').value = invNumResult.next_invoice_number;
+                } catch (e) {
+                    console.error("Error fetching next invoice number", e);
+                }
+
+                const today = new Date();
+                document.getElementById('issue-date').valueAsDate = today;
+                today.setDate(today.getDate() + 30); // Default due date 30 days from now
+                document.getElementById('due-date').valueAsDate = today;
+            })();
+        });
+    </script>
+</body>
+
+</html>

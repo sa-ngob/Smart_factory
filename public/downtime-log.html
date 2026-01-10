@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Downtime Log & Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">Downtime Analysis (Live)</h2>
+                            <div class="text-muted mt-1">ประวัติและสรุปผลการหยุดทำงานของเครื่องจักร</div>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none">
+                            <div class="d-flex">
+                                <div class="btn-group me-2" role="group" id="period-filter">
+                                    <button type="button" class="btn btn-outline-secondary active"
+                                        data-period="daily">Today</button>
+                                    <button type="button" class="btn btn-outline-secondary"
+                                        data-period="weekly">Week</button>
+                                    <button type="button" class="btn btn-outline-secondary"
+                                        data-period="monthly">Month</button>
+                                </div>
+                                <select class="form-select" id="machine-filter" style="width: 200px;">
+                                    <option value="all">All Machines</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="row row-cards">
+                        <div class="col-lg-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Downtime Summary</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div style="height: 300px; min-height: 300px;">
+                                        <canvas id="downtimeChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Downtime Log</h3>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table card-table table-vcenter text-nowrap datatable">
+                                        <thead>
+                                            <tr>
+                                                <th>Machine</th>
+                                                <th>Status</th>
+                                                <th>Start Time</th>
+                                                <th>End Time</th>
+                                                <th>Duration</th>
+                                                <th>Reason</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="downtime-log-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal modal-blur fade" id="assignReasonModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">ระบุสาเหตุการหยุดเครื่อง</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="logIdToUpdate">
+                    <div class="mb-3">
+                        <label class="form-label">สาเหตุ (Reason)</label>
+                        <select class="form-select" id="reasonSelect">
+                            <option value="">กำลังโหลด...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">หมายเหตุ (Notes)</label>
+                        <textarea class="form-control" id="reasonNotes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn me-auto" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="saveReasonBtn">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        // ✅ เพิ่มฟังก์ชันนี้ดักไว้ก่อน เพื่อให้ Sidebar โหลดได้ไม่ error
+        function setActiveMenuItem(id) {
+            console.log("Active Menu Item:", id);
+            // โค้ดสำหรับ Highlight เมนู (ถ้ามี)
+        }
+
+        document.addEventListener("DOMContentLoaded", async function () {
+            // โหลด Sidebar ทันทีที่หน้าเว็บพร้อม
+            try {
+                if (typeof loadSidebar === 'function') {
+                    await loadSidebar();
+                    setActiveMenuItem('downtime-log'); // ตั้งค่าเมนูให้ Active
+                }
+            } catch (e) {
+                console.warn("Sidebar loading warning:", e);
+            }
+
+            let assignReasonModal;
+            let currentMachineId = 'all';
+            let currentPeriod = 'daily';
+            let downtimeChart = null;
+
+            const convertToLocalTime = (gmtTimestamp) => {
+                if (!gmtTimestamp || gmtTimestamp.includes("None")) return 'N/A';
+                const date = new Date(gmtTimestamp);
+                const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' };
+                return new Intl.DateTimeFormat('th-TH', options).format(date);
+            };
+
+            const tableBody = document.getElementById('downtime-log-body');
+            const reasonSelect = document.getElementById('reasonSelect');
+            const machineFilterSelect = document.getElementById('machine-filter');
+
+            // 1. โหลด Dropdown
+            async function loadDropdowns() {
+                try {
+                    // Machine Dropdown
+                    const mRes = await fetchWithAuth('/api/dashboard/machines');
+                    const mJson = await mRes.json();
+                    if (mJson.success) mJson.data.forEach(m => machineFilterSelect.add(new Option(m.machine_code, m.machine_code)));
+
+                    // Reason Dropdown
+                    const rRes = await fetchWithAuth('/api/dashboard/downtime-reasons');
+                    const rJson = await rRes.json();
+                    if (rJson.success) {
+                        reasonSelect.innerHTML = '<option value="" disabled selected>-- เลือกสาเหตุ --</option>';
+                        rJson.data.forEach(r => reasonSelect.add(new Option(r.reason_code + ' - ' + r.description, r.id)));
+                    }
+                } catch (e) { console.error("Dropdown Error:", e); }
+            }
+
+            // 2. โหลดตาราง
+            async function fetchTableData() {
+                try {
+                    const params = new URLSearchParams({ machine_id: currentMachineId, period: currentPeriod });
+                    const res = await fetchWithAuth(`/api/dashboard/downtime-logs?${params.toString()}`);
+                    const json = await res.json();
+
+                    if (!json.success || !json.data || json.data.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">ไม่พบข้อมูล</td></tr>';
+                        return;
+                    }
+
+                    tableBody.innerHTML = json.data.map(log => `
+                        <tr>
+                            <td>${log.machine_code || log.machine_id}</td>
+                            <td><span class="badge ${log.status == 0 ? 'bg-danger' : 'bg-warning'}"></span> ${log.status == 0 ? 'Stop' : 'Alarm'}</td>
+                            <td>${convertToLocalTime(log.start_time)}</td>
+                            <td>${log.end_time ? convertToLocalTime(log.end_time) : 'In Progress'}</td>
+                            <td>${log.duration_sec ? Math.floor(log.duration_sec / 60) + 'm' : '-'}</td>
+                            <td>${log.reason_code || '<span class="text-muted">Unassigned</span>'}</td>
+                            <td><button class="btn btn-sm btn-outline-primary" onclick="openModal(${log.id})">Assign</button></td>
+                        </tr>
+                    `).join('');
+                } catch (e) {
+                    console.error("Table Error:", e);
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error Loading Data</td></tr>';
+                }
+            }
+
+            // 3. โหลดกราฟ
+            async function fetchChartData() {
+                try {
+                    const params = new URLSearchParams({ machine_id: currentMachineId, period: currentPeriod });
+                    const res = await fetchWithAuth(`/api/dashboard/downtime-summary?${params.toString()}`);
+                    const json = await res.json();
+                    if (json.success) renderChart(json.data);
+                } catch (e) { console.error("Chart Error:", e); }
+            }
+
+            function renderChart(data) {
+                const ctx = document.getElementById('downtimeChart').getContext('2d');
+                if (downtimeChart) downtimeChart.destroy();
+
+                const labels = data.map(d => d.reason_code || 'Unassigned');
+                const values = data.map(d => (d.total_duration / 60).toFixed(1));
+
+                downtimeChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Downtime (Minutes)',
+                            data: values,
+                            backgroundColor: '#206bc4'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Events
+            window.openModal = (id) => {
+                document.getElementById('logIdToUpdate').value = id;
+                if (!assignReasonModal) assignReasonModal = new bootstrap.Modal(document.getElementById('assignReasonModal'));
+                assignReasonModal.show();
+            }
+
+            document.getElementById('saveReasonBtn').addEventListener('click', async () => {
+                try {
+                    await fetchWithAuth('/api/dashboard/assign-downtime-reason', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            log_id: document.getElementById('logIdToUpdate').value,
+                            reason_id: reasonSelect.value,
+                            notes: document.getElementById('reasonNotes').value
+                        })
+                    });
+                    assignReasonModal.hide();
+                    fetchTableData(); fetchChartData();
+                } catch (e) { alert(e.message); }
+            });
+
+            document.getElementById('period-filter').addEventListener('click', e => {
+                if (e.target.tagName === 'BUTTON') {
+                    document.querySelector('#period-filter .active').classList.remove('active');
+                    e.target.classList.add('active');
+                    currentPeriod = e.target.dataset.period;
+                    fetchTableData(); fetchChartData();
+                }
+            });
+
+            machineFilterSelect.addEventListener('change', e => {
+                currentMachineId = e.target.value;
+                fetchTableData(); fetchChartData();
+            });
+
+            // Init
+            loadDropdowns();
+            fetchTableData();
+            fetchChartData();
+        });
+    </script>
+</body>
+
+</html>

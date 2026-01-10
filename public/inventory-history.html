@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>ประวัติสต็อก - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+            </aside>
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-fluid">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">ประวัติความเคลื่อนไหวสต็อก</h2>
+                            <h3 class="text-muted" id="item-header">กำลังโหลด...</h3>
+                        </div>
+                         <div class="col-auto ms-auto d-print-none">
+                            <a href="/inventory.html" class="btn btn-outline-secondary">กลับไปหน้ารวม</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body p-md-4">
+                <div class="container-fluid">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">ปรับสต็อก (Stock Adjustment)</h3>
+                                </div>
+                                <div class="card-body">
+                                    <form id="adjustment-form">
+                                        <div class="mb-3">
+                                            <label class="form-label">จำนวนคงคลังปัจจุบัน</label>
+                                            <input type="text" id="current-stock" class="form-control" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">จำนวนที่ถูกต้อง (ยอดใหม่)</label>
+                                            <input type="number" id="new-quantity" class="form-control" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">หมายเหตุ (เหตุผล)</label>
+                                            <textarea id="notes" class="form-control" rows="3" required></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-warning w-100">ยืนยันการปรับสต็อก</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">ประวัติการทำรายการ</h3></div>
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter card-table">
+                                        <thead>
+                                            <tr>
+                                                <th>วันที่</th>
+                                                <th>ประเภทรายการ</th>
+                                                <th class="text-end">จำนวนเปลี่ยนแปลง</th>
+                                                <th class="text-end">ยอดคงเหลือใหม่</th>
+                                                <th>เอกสารอ้างอิง</th>
+                                                <th>หมายเหตุ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="history-table-body">
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const itemCode = urlParams.get('item_code');
+            if (!itemCode) {
+                document.body.innerHTML = '<h1>ไม่พบรหัสสินค้า</h1>';
+                return;
+            }
+
+            // --- Load Sidebar ---
+            fetch('api/sidebar')
+                .then(res => res.text())
+                .then(data => {
+                    document.getElementById('sidebar').innerHTML = data;
+                    const inventoryLink = document.querySelector('a.nav-link[href="/inventory.html"]');
+                    if(inventoryLink) inventoryLink.parentElement.classList.add('active');
+                });
+
+            function fetchAllData() {
+                fetchItemDetails();
+                fetchHistory();
+            }
+
+            function fetchItemDetails() {
+                fetch(`/api/items/by-code/${itemCode}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const item = data.data;
+                        document.getElementById('item-header').textContent = `${item.item_name} (${item.item_code})`;
+                        document.getElementById('current-stock').value = item.stock_quantity.toLocaleString();
+                    });
+            }
+
+            function fetchHistory() {
+                const tbody = document.getElementById('history-table-body');
+                fetch(`/api/inventory/transactions/${itemCode}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        tbody.innerHTML = '';
+                        if (data.data && data.data.length > 0) {
+                             const typeMap = {
+                                'receive_po': { text: 'รับของ (PO)', class: 'text-success' },
+                                'production_receipt': { text: 'รับของดี (MO)', class: 'text-success' },
+                                'production_issue': { text: 'เบิกไปผลิต (MO)', class: 'text-danger' },
+                                'adjustment': { text: 'ปรับสต็อก', class: 'text-warning' },
+                                'sales_shipment': { text: 'ส่งของ (SO)', class: 'text-danger' }
+                            };
+
+                            data.data.forEach(tx => {
+                                const typeInfo = typeMap[tx.transaction_type] || { text: tx.transaction_type, class: '' };
+                                const changeQty = tx.quantity_change > 0 ? `+${tx.quantity_change.toLocaleString()}` : tx.quantity_change.toLocaleString();
+
+                                const row = `
+                                    <tr>
+                                        <td>${new Date(tx.transaction_date).toLocaleString('th-TH')}</td>
+                                        <td><span class="fw-bold ${typeInfo.class}">${typeInfo.text}</span></td>
+                                        <td class="text-end ${typeInfo.class}">${changeQty}</td>
+                                        <td class="text-end fw-bold">${tx.new_quantity.toLocaleString()}</td>
+                                        <td>${tx.reference_type || ''} #${tx.reference_id || ''}</td>
+                                        <td>${tx.notes || '-'}</td>
+                                    </tr>
+                                `;
+                                tbody.innerHTML += row;
+                            });
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่พบประวัติการทำรายการ</td></tr>';
+                        }
+                    });
+            }
+
+            document.getElementById('adjustment-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const newQuantity = document.getElementById('new-quantity').value;
+                const notes = document.getElementById('notes').value;
+
+                if(newQuantity === '' || parseFloat(newQuantity) < 0) {
+                    alert('กรุณาใส่จำนวนที่ถูกต้อง');
+                    return;
+                }
+
+                if(!confirm(`คุณต้องการปรับสต็อกของ ${itemCode} เป็น ${newQuantity} หน่วยใช่หรือไม่?`)){
+                    return;
+                }
+                
+                const body = {
+                    item_code: itemCode,
+                    new_quantity: parseFloat(newQuantity),
+                    notes: notes
+                };
+
+                fetch('/api/inventory/adjust', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                })
+                .then(res => res.json().then(data => ({ok: res.ok, data})))
+                .then(({ok, data}) => {
+                    if (ok) {
+                        alert(data.message);
+                        document.getElementById('adjustment-form').reset();
+                        fetchAllData(); // Refresh data on page
+                    } else {
+                        throw new Error(data.error);
+                    }
+                })
+                .catch(error => alert(`เกิดข้อผิดพลาด: ${error.message}`));
+            });
+
+            // Initial Load
+            fetchAllData();
+        });
+    </script>
+</body>
+</html>

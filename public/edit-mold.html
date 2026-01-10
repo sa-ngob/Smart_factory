@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>แก้ไขข้อมูลแม่พิมพ์ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body class="theme-dark">
+    <div class="page">
+        <!-- Sidebar -->
+      <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p class="text-end text-muted mb-2">
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <h2 class="page-title">แก้ไขข้อมูลแม่พิมพ์</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <form id="mold-form" class="card">
+                        <div class="card-body">
+                            <input type="hidden" id="mold-id" name="id">
+                            <div class="row">
+                                <!-- ข้อมูลหลัก -->
+                                <div class="col-md-4">
+                                    <fieldset class="form-fieldset">
+                                        <legend>ข้อมูลหลัก</legend>
+                                        <div class="mb-3">
+                                            <label class="form-label required">รหัสแม่พิมพ์</label>
+                                            <input type="text" name="mold_code" class="form-control" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label required">ชื่อแม่พิมพ์</label>
+                                            <input type="text" name="mold_name" class="form-control" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">ลูกค้า (เจ้าของ)</label>
+                                            <select name="customer_id" class="form-select"></select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">วันที่รับเข้า</label>
+                                            <input type="date" name="received_date" class="form-control">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">ตำแหน่งจัดเก็บ</label>
+                                            <input type="text" name="storage_location" class="form-control">
+                                        </div>
+                                    </fieldset>
+                                </div>
+                                <!-- รายละเอียดเทคนิค -->
+                                <div class="col-md-4">
+                                    <fieldset class="form-fieldset">
+                                        <legend>รายละเอียดทางเทคนิค</legend>
+                                        <div class="row">
+                                            <div class="col-6 mb-3"><label class="form-label">ประเภทแม่พิมพ์</label><select name="mold_type" class="form-select"><option value="2_plate">2 เพลท</option><option value="3_plate">3 เพลท</option></select></div>
+                                            <div class="col-6 mb-3"><label class="form-label">ระบบ Runner</label><select name="runner_system" class="form-select"><option value="cool_runner">Cool Runner</option><option value="hot_runner">Hot Runner</option></select></div>
+                                        </div>
+                                        <div class="mb-3"><label class="form-label">ประเภท Gate</label><input type="text" name="gate_type" class="form-control"></div>
+                                        <div class="mb-3"><label class="form-label">ขนาด (กxยxส mm.)</label><div class="row g-2"><div class="col"><input type="number" name="size_w" class="form-control" placeholder="กว้าง"></div><div class="col"><input type="number" name="size_l" class="form-control" placeholder="ยาว"></div><div class="col"><input type="number" name="size_h" class="form-control" placeholder="สูง"></div></div></div>
+                                        <div class="row">
+                                            <div class="col-6 mb-3"><label class="form-label">น้ำหนัก (Kg.)</label><input type="number" name="weight" class="form-control"></div>
+                                            <div class="col-6 mb-3"><label class="form-label">จำนวน Cavity</label><input type="number" name="cavity" class="form-control"></div>
+                                        </div>
+                                        <div class="mb-3"><label class="form-label">Shot Counter</label><input type="number" name="shot_counter" class="form-control" value="0"></div>
+                                    </fieldset>
+                                </div>
+                                <!-- รูปภาพ -->
+                                <div class="col-md-4">
+                                    <fieldset class="form-fieldset">
+                                        <legend>รูปภาพ</legend>
+                                        <div class="mb-3"><label class="form-label">รูปด้าน Core</label><input type="file" name="core_image" class="form-control" accept="image/*"></div>
+                                        <div class="mb-3"><label class="form-label">รูปด้าน Cavity</label><input type="file" name="cavity_image" class="form-control" accept="image/*"></div>
+                                        <div class="mb-3"><label class="form-label">รูปชิ้นงาน</label><input type="file" name="part_image" class="form-control" accept="image/*"></div>
+                                    </fieldset>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-end">
+                            <a href="/molds.html" class="btn">ยกเลิก</a>
+                            <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            loadSidebar();
+            loadUserInfo();
+        });
+    </script>
+    <script src="/edit-mold.js" defer></script>
+</body>
+</html>

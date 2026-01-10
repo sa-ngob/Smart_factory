@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>แก้ไขข้อมูลสินค้า - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        /* CSS สำหรับซ่อน/แสดงปุ่มตาม Role */
+        .admin-only {
+            display: none !important;
+        }
+
+        body.role-admin .admin-only {
+            display: inline-flex !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <h2 class="page-title">แก้ไขข้อมูลสินค้า</h2>
+                    <h3 class="text-muted" id="item-code-header">กำลังโหลด...</h3>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <form id="edit-item-form" class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <fieldset class="form-fieldset">
+                                        <legend>ข้อมูลทั่วไป</legend>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label required">ประเภท</label>
+                                                <!-- ป้องกันการแก้ไขประเภทสินค้า -->
+                                                <select name="item_type" class="form-select" required disabled>
+                                                    <option value="finished_good">สินค้าสำเร็จรูป (FG)</option>
+                                                    <option value="semi_good">สินค้าระหว่างผลิต (SE)</option>
+                                                    <option value="raw_material">วัตถุดิบ (RM)</option>
+                                                    <option value="consumable">วัสดุสิ้นเปลือง (CS)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label required">รหัสสินค้า/วัตถุดิบ</label>
+                                                <!-- ป้องกันการแก้ไขรหัสสินค้า -->
+                                                <input type="text" name="item_code" class="form-control" required
+                                                    readonly>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label required">ชื่อ</label>
+                                            <input type="text" name="item_name" class="form-control" required>
+                                        </div>
+
+                                        <!-- === Financials & Stock === -->
+                                        <div class="row mb-3">
+                                            <div class="col-6">
+                                                <label class="form-label">ราคาซื้อ (Cost Price)</label>
+                                                <input type="number" name="cost_price" class="form-control" step="0.01"
+                                                    min="0">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label">ราคาขาย (Selling Price)</label>
+                                                <input type="number" name="selling_price" class="form-control"
+                                                    step="0.01" min="0">
+                                            </div>
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-6">
+                                                <label class="form-label">จำนวนสต็อก (Stock Quantity)</label>
+                                                <input type="number" name="stock_quantity" class="form-control" step="1"
+                                                    min="0">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label">สต็อกขั้นต่ำ (Min Stock)</label>
+                                                <input type="number" name="min_stock" class="form-control" step="1"
+                                                    min="0">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">หน่วยนับ (UOM)</label>
+                                            <input type="text" name="uom" class="form-control">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">ลูกค้า</label>
+                                            <select name="customer_id" id="customer-select"
+                                                placeholder="เลือกลูกค้า..."></select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">ผู้ขายสินค้านี้ (Vendors)</label>
+                                            <select id="vendor-select" name="vendors" multiple
+                                                placeholder="เลือกผู้ขาย..."></select>
+                                        </div>
+                                    </fieldset>
+                                </div>
+                                <div class="col-md-4">
+                                    <fieldset class="form-fieldset">
+                                        <legend>รูปภาพ</legend>
+                                        <!-- *** จุดที่แก้ไข: เปลี่ยน src ของรูปภาพ *** -->
+                                        <img id="item-image-preview"
+                                            src="https://placehold.co/400x400/e9ecef/adb5bd?text=No+Image"
+                                            class="img-fluid rounded mb-2" alt="Item image preview">
+                                        <div class="mb-3">
+                                            <label class="form-label">เปลี่ยนรูปภาพ</label>
+                                            <input type="file" name="image" class="form-control" accept="image/*">
+                                        </div>
+                                    </fieldset>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-end">
+                            <a href="/items.html" class="btn">ยกเลิก</a>
+                            <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            // 1. Load Sidebar & User Info
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    const link = document.querySelector('a.nav-link[href="/items.html"]');
+                    if (link) link.parentElement.classList.add('active');
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                        if (data.role) {
+                            document.body.classList.add(`role-${data.role}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            await loadSidebar();
+            await loadUserInfo();
+
+            // 2. Initialize Logic
+            const urlParams = new URLSearchParams(window.location.search);
+            const itemId = urlParams.get('id');
+            const form = document.getElementById('edit-item-form');
+            if (!itemId) {
+                document.body.innerHTML = '<h1>ไม่พบ ID ของสินค้า</h1>'; return;
+            }
+
+            // Initialize Selects
+            const customerSelect = new TomSelect("#customer-select", { valueField: 'id', labelField: 'name', searchField: 'name', create: false });
+            const vendorSelect = new TomSelect("#vendor-select", { valueField: 'id', labelField: 'name', searchField: 'name', create: false });
+
+            // Load Data
+            try {
+                const [itemRes, customersRes, vendorsRes, linkedVendorsRes] = await Promise.all([
+                    fetchWithAuth(`/api/items/${itemId}`),
+                    fetchWithAuth('/api/entities?list_for=customer'),
+                    fetchWithAuth('/api/entities?list_for=vendor'),
+                    fetchWithAuth(`/api/items/${itemId}/vendors`)
+                ]);
+
+                if (!itemRes.ok) throw new Error('ไม่สามารถโหลดข้อมูลสินค้าได้');
+
+                const itemData = await itemRes.json();
+                const customersData = customersRes.ok ? await customersRes.json() : { data: [] };
+                const allVendorsData = vendorsRes.ok ? await vendorsRes.json() : { data: [] };
+                const linkedVendorsData = linkedVendorsRes.ok ? await linkedVendorsRes.json() : { data: [] };
+
+                const item = itemData.data;
+                const allCustomers = customersData.data;
+                const allVendors = allVendorsData.data;
+                const linkedVendorIds = linkedVendorsData.data;
+
+                // Populate form fields
+                document.getElementById('item-code-header').textContent = item.item_code;
+                for (const key in item) {
+                    if (form.elements[key]) {
+                        if (form.elements[key].type !== 'file') {
+                            form.elements[key].value = item[key];
+                        }
+                    }
+                }
+                if (item.image_path) {
+                    document.getElementById('item-image-preview').src = item.image_path;
+                }
+
+                // Populate and pre-select customers and vendors
+                customerSelect.addOptions(allCustomers);
+                customerSelect.setValue(item.customer_id);
+                vendorSelect.addOptions(allVendors);
+                vendorSelect.setValue(linkedVendorIds);
+
+            } catch (error) {
+                console.error("Failed to load item data:", error);
+                alert("เกิดข้อผิดพลาดในการโหลดข้อมูล: " + error.message);
+            }
+
+            // Handle Form Submission
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                // Temporarily enable disabled fields to include them in FormData
+                const disabledFields = Array.from(form.elements).filter(el => el.disabled);
+                disabledFields.forEach(el => el.disabled = false);
+
+                const formData = new FormData(form);
+
+                // Re-disable them
+                disabledFields.forEach(el => el.disabled = true);
+
+                const selectedVendors = vendorSelect.getValue();
+                formData.delete('vendors');
+                // Append vendors correctly
+                if (Array.isArray(selectedVendors)) {
+                    selectedVendors.forEach(vendorId => formData.append('vendors', vendorId));
+                } else if (selectedVendors) {
+                    formData.append('vendors', selectedVendors);
+                }
+
+                try {
+                    const response = await fetchWithAuth(`/api/items/${itemId}`, {
+                        method: 'PUT',
+                        body: formData // Standard fetch supports FormData
+                    });
+
+                    if (response.ok) {
+                        alert('บันทึกข้อมูลสำเร็จ!');
+                        window.location.href = '/items.html';
+                    } else {
+                        const data = await response.json();
+                        throw new Error(data.error || 'Unknown error');
+                    }
+                } catch (error) {
+                    alert(`เกิดข้อผิดพลาด: ${error.message}`);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

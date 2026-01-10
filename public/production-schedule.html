@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>แผนการผลิต (Gantt Chart) - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.css">
+    <style>
+        /* Visual Requirement: Grey for Plan, Green for Progress */
+
+        /* Visual Requirement: Soft/Comfortable Colors */
+
+        /* Plan Bar (Background) - Soft Slate Grey */
+        .gantt .bar {
+            fill: #cbd5e1 !important;
+            /* Slate 300 - Soft Grey */
+            stroke: #94a3b8 !important;
+            /* Slate 400 - Subtle border */
+            fill-opacity: 0.7 !important;
+            /* Semi-transparent */
+        }
+
+        /* Progress Bar - Solid Green */
+        .gantt .bar-progress {
+            fill: #2fb344 !important;
+            /* Tabler Green (Natural) */
+        }
+
+        /* Ensure specific states use the green theme */
+        .gantt .bar-wrapper.gantt-in_progress .bar-progress,
+        .gantt .bar-wrapper.gantt-completed .bar-progress {
+            fill: #2fb344 !important;
+        }
+
+        /* Cancelled State - Soft Red */
+        .gantt .bar-wrapper.gantt-cancelled .bar-progress {
+            fill: #ff6b6b !important;
+        }
+
+        .gantt-container .bar-label,
+        .gantt-container .bar-wrapper {
+            cursor: pointer;
+        }
+
+        /* Label - Dark Slate for readability */
+        .gantt .bar-label {
+            fill: #334155 !important;
+            /* Slate 700 */
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <h2 class="page-title">แผนการผลิต (Production Schedule)</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">ภาพรวมแผนการผลิต</h3>
+                            <div class="ms-auto d-flex align-items-center">
+                                <span class="d-none d-sm-inline-block me-3">
+                                    <span class="badge bg-secondary-lt">รอผลิต</span>
+                                    <span class="badge bg-primary-lt ms-2">กำลังผลิต</span>
+                                    <span class="badge bg-success-lt ms-2">เสร็จสิ้น</span>
+                                </span>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        data-view-mode="Day">Day</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        data-view-mode="Week">Week</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        data-view-mode="Month">Month</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body" id="gantt-container">
+                            <p class="text-center">กำลังโหลดข้อมูลแผนการผลิต...</p>
+                        </div>
+                        <div class="card-footer text-end">
+                            <small class="text-muted" id="last-updated"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // 1. โหลด Sidebar เข้ามาในหน้า
+            fetch('api/sidebar')
+                .then(res => res.text())
+                .then(data => {
+                    document.getElementById('sidebar').innerHTML = data;
+
+                    // --- ✨ปรับปรุง: กำหนดให้เมนูของหน้านี้เป็น Active ---
+                    // ค้นหาลิงก์ที่ตรงกับหน้านี้ (production-schedule.html)
+                    const currentLink = document.querySelector('a.nav-link[href="/production-schedule.html"]');
+                    if (currentLink) {
+                        // เพิ่ม class 'active' ให้กับ li ที่เป็น parent ของลิงก์นั้น
+                        currentLink.parentElement.classList.add('active');
+                    }
+                });
+
+            // 2. จัดการ Gantt Chart
+            const ganttContainer = document.getElementById('gantt-container');
+            const ganttInstances = [];
+
+            // ดึงข้อมูลแผนการผลิตจาก API
+            fetch('/api/schedule/gantt-data')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    ganttContainer.innerHTML = ''; // เคลียร์ข้อความ "กำลังโหลด..."
+
+                    if (data.data && data.data.length > 0) {
+                        // วนลูปสร้าง Gantt chart สำหรับแต่ละเครื่องจักร
+                        data.data.forEach(machine => {
+                            if (machine.tasks && machine.tasks.length > 0) {
+                                // สร้าง Title ของเครื่องจักร
+                                const title = document.createElement('h4');
+                                title.className = 'mt-4';
+                                title.textContent = `เครื่องจักร: ${machine.machine_name}`;
+                                ganttContainer.appendChild(title);
+
+                                // สร้าง Element สำหรับ Gantt chart
+                                const ganttChartElement = document.createElement('div');
+                                const chartId = `gantt-machine-${machine.machine_id}`;
+                                ganttChartElement.id = chartId;
+                                ganttContainer.appendChild(ganttChartElement);
+
+                                // สร้าง Instance ของ Gantt Chart
+                                const gantt = new Gantt(`#${chartId}`, machine.tasks, {
+                                    on_click: function (task) {
+                                        // คลิกที่ task เพื่อไปยังหน้ารายละเอียดใบสั่งผลิต (MO)
+                                        if (task.mo_id) {
+                                            window.location.href = `/mo-detail.html?id=${task.mo_id}`;
+                                        }
+                                    },
+                                    view_mode: 'Day',
+                                    language: 'en',
+                                    custom_popup_html: function (task) {
+                                        // Custom Tooltip
+                                        const start = new Date(task.start).toLocaleDateString('th-TH');
+                                        const end = new Date(task.end).toLocaleDateString('th-TH');
+                                        const progress = task.progress ? task.progress.toFixed(1) : 0;
+                                        return `
+                                            <div class="details-container">
+                                                <h5>${task.name}</h5>
+                                                <p>ช่วงเวลา: ${start} - ${end}</p>
+                                                <p>ความคืบหน้า: ${progress}%</p>
+                                                <p>ยอดผลิต: <b>${task._produced}</b> / ${task._target}</p>
+                                            </div>
+                                        `;
+                                    }
+                                });
+                                ganttInstances.push(gantt);
+                            }
+                        });
+                        document.getElementById('last-updated').textContent = `อัปเดตล่าสุด: ${new Date().toLocaleTimeString('th-TH')}`;
+                    } else {
+                        // กรณีไม่พบข้อมูล
+                        ganttContainer.innerHTML = `
+                            <div class="empty">
+                                <div class="empty-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 6m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z" /><path d="M8 14m0 1a1 1 0 0 1 1 -1h10a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1z" /></svg>
+                                </div>
+                                <p class="empty-title">ไม่พบข้อมูลการวางแผนการผลิต</p>
+                                <p class="empty-subtitle text-muted">ดูเหมือนว่าจะยังไม่มีใบสั่งผลิตใดๆ ที่ถูกวางแผน</p>
+                                <div class="empty-action">
+                                    <a href="/manufacturing-orders.html" class="btn btn-primary">ไปที่หน้ารายการใบสั่งผลิต</a>
+                                </div>
+                            </div>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Gantt Chart Error:', error);
+                    ganttContainer.innerHTML = '<p class="text-center text-danger">เกิดข้อผิดพลาดในการโหลดข้อมูลแผนการผลิต</p>';
+                });
+
+            // 3. จัดการปุ่มเปลี่ยน View Mode (Day, Week, Month)
+            document.querySelectorAll('[data-view-mode]').forEach(button => {
+                button.addEventListener('click', function () {
+                    const viewMode = this.getAttribute('data-view-mode');
+                    ganttInstances.forEach(gantt => {
+                        gantt.change_view_mode(viewMode);
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

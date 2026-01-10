@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Production Dashboard (Real-time)</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+        .avatar { width: 2.5rem; height: 2.5rem; display: inline-flex; align-items: center; justify-content: center; border-radius: .375rem; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl">
+                    <h2 class="page-title">Production Dashboard (Real-time)</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="row row-cards">
+                        <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-blue text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-settings-cog" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12.003 21c-.24 0 -.48 -.01 -.713 -.031a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.312 .318 1.644 1.794 .995 2.697" /><path d="M19.003 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M19.003 15.5a1.5 1.5 0 1 0 0 -3a1.5 1.5 0 0 0 0 3z" /></svg></span></div><div class="col"><div class="font-weight-medium">เครื่องจักรทั้งหมด</div><div class="text-muted" id="prod-kpi-total">0</div></div></div></div></div></div>
+                        <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-success text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-player-play" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8z" /></svg></span></div><div class="col"><div class="font-weight-medium">ทำงาน (Running)</div><div class="text-muted" id="prod-kpi-running">0</div></div></div></div></div></div>
+                        <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-secondary text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-player-stop" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 5m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z" /></svg></span></div><div class="col"><div class="font-weight-medium">หยุด (Stop)</div><div class="text-muted" id="prod-kpi-stop">0</div></div></div></div></div></div>
+                        <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-danger text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-triangle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg></span></div><div class="col"><div class="font-weight-medium">แจ้งเตือน (Alarm)</div><div class="text-muted" id="prod-kpi-alarm">0</div></div></div></div></div></div>
+                        <div class="col-12"><div class="card"><div class="card-header"><h3 class="card-title">สถานะเครื่องจักร</h3></div><div class="table-responsive"><table class="table card-table table-vcenter text-nowrap"><thead><tr><th>Machine ID</th><th>Status</th><th>Job (MO)</th><th>Item</th><th>Mold Count</th><th>Cycle Time (s)</th><th>Dry Temp (°C)</th><th>Core Temp (°C)</th><th>Cavity Temp (°C)</th><th>Last Update</th></tr></thead><tbody id="production-machine-list"></tbody></table></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        
+        async function loadSidebar() {
+            try {
+                const response = await fetchWithAuth('/api/sidebar'); 
+                const sidebarHtml = await response.text();
+                document.getElementById('sidebar').innerHTML = sidebarHtml;
+                // ✅ highlight: เพิ่มการเรียกใช้ฟังก์ชันไฮไลท์เมนู หลังจากโหลด Sidebar เสร็จ
+                setActiveMenuItem();
+            } catch (error) {
+                console.error("Could not load sidebar:", error.message);
+            }
+        }
+
+        const updateText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        const renderDashboard = (data) => {
+            updateText('prod-kpi-total', data.kpis.total_machines);
+            // ✅ FIX: แก้ไข Key ให้ตรงกับข้อมูลที่ส่งมาจาก API
+            updateText('prod-kpi-running', data.kpis.running);
+            updateText('prod-kpi-stop', data.kpis.stop);
+            updateText('prod-kpi-alarm', data.kpis.alarm);
+
+            const statusMap = {
+                0: { text: 'Stop', class: 'bg-secondary' },
+                1: { text: 'Running', class: 'bg-success' }, 
+                2: { text: 'Alarm', class: 'bg-danger' },
+            };
+            const machineListBody = document.getElementById('production-machine-list');
+            machineListBody.innerHTML = data.machine_list.map(machine => {
+                const status = statusMap[machine.machine_status] || { text: 'Unknown', class: 'bg-secondary' };
+                const moldCount = machine.mold_count ? machine.mold_count.toLocaleString() : '0';
+                const cycleTime = machine.cycle_time_sec ? machine.cycle_time_sec.toFixed(1) : 'N/A';
+                const dryTemp = machine.material_dry_temp ? machine.material_dry_temp.toFixed(1) : 'N/A';
+                const coreTemp = machine.mold_temp_core ? machine.mold_temp_core.toFixed(1) : 'N/A';
+                const cavityTemp = machine.mold_temp_cavity ? machine.mold_temp_cavity.toFixed(1) : 'N/A';
+                const lastUpdate = machine.timestamp ? new Date(machine.timestamp + "Z").toLocaleTimeString('th-TH') : 'N/A';
+
+                // --- ข้อมูลใหม่ที่ดึงมาจากฐานข้อมูลจริง ---
+                const moNumber = machine.mo_number || '<span class="text-muted fst-italic">Idle</span>';
+                const itemName = machine.item_name ? `<div>${machine.item_name}</div><div class="text-muted">${machine.item_code}</div>` : '-';
+
+                return `
+                    <tr>
+                        <td><span class="text-muted">${machine.machine_id}</span></td>
+                        <td><span class="badge ${status.class} me-1"></span> ${status.text}</td>
+                        <td>${moNumber}</td>
+                        <td>${itemName}</td>
+                        <td>${moldCount}</td>
+                        <td>${cycleTime}</td>
+                        <td>${dryTemp}</td>
+                        <td>${coreTemp}</td>
+                        <td>${cavityTemp}</td>
+                        <td>${lastUpdate}</td>
+                    </tr>
+                `;
+            }).join('');
+        };
+        
+        const fetchData = async () => {
+            try {
+                // ✅ FIX: แก้ไข Endpoint ให้ถูกต้องเป็น /api/dashboard/production-data (จากไฟล์ dashboard.js)
+                const response = await fetchWithAuth('/api/dashboard/production-data');
+                const result = await response.json();
+                if (result.success) {
+                    renderDashboard(result.data);
+                } else { throw new Error(result.error); }
+            } catch (err) {
+                console.error("Failed to load production dashboard:", err);
+            }
+        };
+        
+        // --- เรียกใช้งานฟังก์ชันทั้งหมดเมื่อหน้าเว็บโหลดเสร็จ ---
+        loadSidebar();
+        // หน้านี้ไม่มีที่แสดงชื่อผู้ใช้ จึงไม่ต้องเรียก loadUserInfo()
+        
+        fetchData();
+        setInterval(fetchData, 5000); // Refresh ทุก 5 วินาที
+    });
+    </script>
+</body>
+</html>

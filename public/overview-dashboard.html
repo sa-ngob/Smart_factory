@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Factory Overview Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <style>
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .icon-lg {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">Factory Overview</h2>
+                        </div>
+                        <div class="col-auto ms-auto">
+                            <div class="btn-group" id="period-filter">
+                                <button type="button" class="btn" data-period="daily">Today</button>
+                                <button type="button" class="btn active" data-period="monthly">This Month</button>
+                                <button type="button" class="btn" data-period="yearly">This Year</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="row row-deck row-cards">
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">ยอดขาย</div>
+                                    </div>
+                                    <div class="h1 mb-3" id="kpi-total-sales">...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">ใบสั่งผลิต (กำลังผลิต)</div>
+                                    </div>
+                                    <div class="h1 mb-3" id="kpi-in-progress-mo">...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">เครื่องจักร (ทำงาน)</div>
+                                    </div>
+                                    <div class="h1 mb-3 text-success" id="kpi-running-machines">...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">Scrap Rate</div>
+                                    </div>
+                                    <div class="h1 mb-3 text-danger" id="kpi-scrap-rate">...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h3 class="card-title">Sales Trend</h3>
+                                    <div id="chart-sales-trend"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">ใบสั่งผลิตที่กำลังดำเนินการ (Top 5)</h3>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table card-table table-vcenter">
+                                        <thead>
+                                            <tr>
+                                                <th>เลขที่ MO</th>
+                                                <th>สินค้า</th>
+                                                <th>จำนวนที่ต้องผลิต</th>
+                                                <th>กำหนดส่ง</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-top-mos"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // --- ส่วนที่ 1: ฟังก์ชันพื้นฐานและการตั้งค่าเริ่มต้น ---
+
+            let currentPeriod = 'monthly';
+            const charts = {};
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                    // ✅ highlight: เพิ่มการเรียกใช้ฟังก์ชันไฮไลท์เมนู หลังจากโหลด Sidebar เสร็จ
+                    setActiveMenuItem();
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            // --- ส่วนที่ 2: ฟังก์ชันสำหรับโหลดและแสดงผลข้อมูล Dashboard ---
+
+            function setActiveMenuItem() {
+                const currentPath = window.location.pathname;
+                const menuLinks = document.querySelectorAll('#sidebar .nav-link');
+                menuLinks.forEach(link => {
+                    if (link.getAttribute('href') === currentPath) {
+                        link.parentElement.classList.add('active');
+                    }
+                });
+            }
+
+            const updateText = (id, value, format = 'number') => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (value === undefined || value === null) { el.textContent = '...'; return; }
+                if (format === 'currency') el.textContent = `฿${Number(value).toLocaleString('th-TH', { maximumFractionDigits: 0 })}`;
+                else if (format === 'percent') el.textContent = `${Number(value).toFixed(1)}%`;
+                else el.textContent = Number(value).toLocaleString('th-TH');
+            };
+
+            const renderDashboard = (data) => {
+                const kpis = data.kpis || {};
+
+                updateText('kpi-total-sales', kpis.total_sales, 'currency');
+                updateText('kpi-in-progress-mo', kpis.in_progress_mo_count);
+                updateText('kpi-running-machines', kpis.running_machines || 0);
+                updateText('kpi-scrap-rate', kpis.scrap_rate, 'percent');
+
+                const salesTrendOptions = {
+                    chart: {
+                        type: 'area',
+                        height: 300,
+                        toolbar: { show: false },
+                        zoom: { enabled: false },
+                        foreColor: '#fff',
+                        fontFamily: 'inherit'
+                    },
+                    series: [{ name: 'ยอดขาย', data: (data.sales_trend || []).map(d => ({ x: d.date, y: d.daily_sales })) }],
+                    xaxis: { type: 'datetime', labels: { datetimeUTC: false } },
+                    yaxis: { labels: { formatter: (val) => `${val / 1000}k` } },
+                    dataLabels: { enabled: false },
+                    stroke: { curve: 'smooth', width: 2 },
+                    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.9, stops: [0, 90, 100] } },
+                    tooltip: { theme: 'dark', x: { format: 'dd MMM yyyy' }, y: { formatter: (val) => `฿${val.toLocaleString('th-TH')}` } }
+                };
+                if (charts.salesTrend) {
+                    charts.salesTrend.updateOptions(salesTrendOptions);
+                } else {
+                    charts.salesTrend = new ApexCharts(document.querySelector("#chart-sales-trend"), salesTrendOptions);
+                    charts.salesTrend.render();
+                }
+
+                const moTable = document.getElementById('table-top-mos');
+                const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('th-TH') : '-';
+                moTable.innerHTML = (data.top_mos || []).map(mo => `
+                    <tr>
+                        <td>${mo.mo_number}</td><td>${mo.item_name}</td>
+                        <td>${mo.quantity_to_produce.toLocaleString()}</td><td>${formatDate(mo.due_date)}</td>
+                    </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted">No manufacturing orders in progress.</td></tr>';
+            };
+
+            const fetchData = async (period) => {
+                try {
+                    const response = await fetchWithAuth(`/api/overview-dashboard?period=${period}`);
+                    const result = await response.json();
+                    if (result.success) {
+                        renderDashboard(result.data);
+                    } else { throw new Error(result.error); }
+                } catch (err) {
+                    console.error("Failed to load overview dashboard:", err);
+                    document.querySelector('.page-body .container-xl').innerHTML = `<div class="alert alert-danger">Failed to load data. Please check the console.</div>`;
+                }
+            };
+
+            // --- ส่วนที่ 3: การตั้งค่า Event Listener และการเรียกใช้งาน ---
+
+            document.getElementById('period-filter').addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' && !e.target.classList.contains('active')) {
+                    currentPeriod = e.target.dataset.period;
+                    document.querySelectorAll('#period-filter .btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    fetchData(currentPeriod);
+                }
+            });
+
+            // --- เรียกใช้งานฟังก์ชันทั้งหมดเมื่อหน้าเว็บโหลดเสร็จ ---
+            loadSidebar();
+            // ❌ highlight: ลบการเรียก loadUserInfo() ออก เพราะหน้านี้ไม่มีที่แสดงผล (id="display-username")
+            fetchData(currentPeriod);
+
+            setInterval(() => fetchData(currentPeriod), 60000); // Refresh ทุก 1 นาที
+        });
+    </script>
+</body>
+
+</html>

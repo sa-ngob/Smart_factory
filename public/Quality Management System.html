@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quality Management System</title>
+    <!-- Google Font: Source Sans Pro -->
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        /* Custom Styles */
+        body {
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .nav-sidebar .nav-item .nav-link {
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+
+        <!-- Navbar -->
+        <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+            <!-- Left navbar links -->
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+                </li>
+            </ul>
+        </nav>
+        <!-- /.navbar -->
+
+        <!-- Main Sidebar Container -->
+        <aside class="main-sidebar sidebar-dark-primary elevation-4">
+            <!-- Brand Logo -->
+            <a href="#" class="brand-link">
+                <i class="fas fa-cogs brand-image img-circle elevation-3" style="opacity: .8"></i>
+                <span class="brand-text font-weight-light">Quality System</span>
+            </a>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Sidebar Menu -->
+                <nav class="mt-2">
+                    <ul id="sidebarMenu" class="nav nav-pills nav-sidebar flex-column" data-widget="treeview"
+                        role="menu" data-accordion="false" style="padding-bottom: 4rem;">
+                        <!-- Menu items will be dynamically inserted here -->
+                        <li class="nav-item" style="position: absolute; bottom: 1rem; width: 90%;">
+                            <a href="/dashboard.html" class="nav-link">
+                                <i class="nav-icon fas fa-sign-out-alt"></i>
+                                <p>ออกจากระบบ</p>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                <!-- /.sidebar-menu -->
+            </div>
+            <!-- /.sidebar -->
+        </aside>
+
+        <!-- Content Wrapper. Contains page content -->
+        <div class="content-wrapper">
+            <!-- Content Header (Page header) -->
+            <div class="content-header">
+                <div class="container-fluid">
+                    <div class="row mb-2">
+                        <div class="col-sm-6">
+                            <h1 class="m-0" id="pageTitle">Dashboard</h1>
+                        </div>
+                        <div class="col-sm-6">
+                            <ol class="breadcrumb float-sm-right">
+                                <li class="breadcrumb-item"><a href="#">Home</a></li>
+                                <li class="breadcrumb-item active" id="breadcrumbActive">Dashboard</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /.content-header -->
+
+            <!-- Main content -->
+            <section class="content">
+                <div class="container-fluid">
+
+                    <!-- Dashboard Content -->
+                    <div id="dashboard-content">
+                        <div class="jumbotron">
+                            <h1 class="display-4">ยินดีต้อนรับสู่ระบบบริหารคุณภาพ</h1>
+                            <p class="lead">กรุณาเลือกเมนูจากด้านข้างเพื่อเริ่มต้นใช้งาน</p>
+                        </div>
+                    </div>
+
+                    <!-- CRUD Content (Table View) -->
+                    <div id="crud-content" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title" id="cardTitle">Data</h3>
+                                <div class="card-tools">
+                                    <button id="addNewBtn" type="button" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-plus"></i> เพิ่มข้อมูลใหม่
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead id="tableHeaders">
+                                            <!-- Table headers will be inserted by JavaScript -->
+                                        </thead>
+                                        <tbody id="tableBody">
+                                            <!-- Table rows will be inserted by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+            <!-- /.content -->
+        </div>
+        <!-- /.content-wrapper -->
+
+        <!-- Main Footer -->
+        <footer class="main-footer">
+            <strong>Copyright &copy; 2024-2025.</strong> All rights reserved.
+        </footer>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Data Modal -->
+        <div class="modal fade" id="dataModal" tabindex="-1" role="dialog" aria-labelledby="modalTitle"
+            aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <form id="dataForm">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalTitle">จัดการข้อมูล</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body" id="modalBody">
+                            <!-- Form fields will be inserted by JavaScript -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!-- ./wrapper -->
+
+    <!-- REQUIRED SCRIPTS -->
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Bootstrap 4 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery Validation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/additional-methods.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <!-- AdminLTE App -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
+
+    <!-- =============================================================== -->
+    <!-- APPLICATION SCRIPT -->
+    <!-- =============================================================== -->
+    <script>
+        // --- Application Configuration ---
+        const appConfig = {
+            sections: {
+                'dashboard': { title: 'Dashboard', hasTable: false, icon: 'fa-tachometer-alt' },
+                'kpi': { title: 'KPI', hasTable: true, fields: ['name', 'target', 'actual', 'status'], icon: 'fa-chart-line' },
+                'top5-defect': { title: 'Top5 Defect', hasTable: true, fields: ['defect_type', 'count', 'percentage', 'action'], icon: 'fa-chart-pie' },
+                'incoming-inspection': { title: 'การตรวจสอบรับเข้า', hasTable: true, fields: ['material_code', 'supplier', 'inspection_date', 'result', 'inspector'], icon: 'fa-dolly-flatbed' },
+                'pre-use-inspection': { title: 'การตรวจสอบก่อนใช้งาน', hasTable: true, fields: ['mold_id', 'inspection_date', 'condition', 'inspector', 'status'], icon: 'fa-check-circle' },
+                'preventive-maintenance': { title: 'การบำรุงรักษาเชิงป้องกัน', hasTable: true, fields: ['mold_id', 'maintenance_date', 'type', 'technician', 'next_due'], icon: 'fa-tools' },
+                'history-record': { title: 'ทะเบียนประวัติ', hasTable: true, fields: ['mold_id', 'event_date', 'event_type', 'description', 'operator'], icon: 'fa-history' },
+                'fai': { title: 'การอนุมัติการผลิตเริ่มต้น (FAI)', hasTable: true, fields: ['product_code', 'approval_date', 'inspector', 'result', 'remarks'], icon: 'fa-play-circle' },
+                'spc': { title: 'การควบคุมกระบวนการทางสถิติ (SPC)', hasTable: true, fields: ['process_name', 'measurement', 'ucl', 'lcl', 'status'], icon: 'fa-wave-square' },
+                'patrol-inspection': { title: 'การตรวจสอบระหว่างผลิต', hasTable: true, fields: ['line_number', 'inspection_time', 'inspector', 'findings', 'action'], icon: 'fa-search' },
+                'final-inspection': { title: 'การตรวจสอบขั้นสุดท้าย', hasTable: true, fields: ['batch_number', 'inspection_date', 'inspector', 'result', 'quantity'], icon: 'fa-clipboard-check' },
+                'packaging-control': { title: 'การควบคุมการบรรจุและจัดส่ง', hasTable: true, fields: ['order_number', 'packaging_date', 'operator', 'status', 'destination'], icon: 'fa-box-open' },
+                'document-control': { title: 'การควบคุมเอกสารและบันทึก', hasTable: true, fields: ['document_id', 'title', 'version', 'effective_date', 'owner'], icon: 'fa-file-alt' },
+                'non-conforming': { title: 'การควบคุมผลิตภัณฑ์ที่ไม่เป็นไปตามข้อกำหนด', hasTable: true, fields: ['nc_number', 'product_code', 'description', 'disposition', 'responsible'], icon: 'fa-times-circle' },
+                'capa': { title: 'การปฏิบัติการแก้ไขและป้องกัน (CAPA)', hasTable: true, fields: ['capa_number', 'issue_description', 'root_cause', 'action_plan', 'due_date'], icon: 'fa-tasks' },
+                'equipment-control': { title: 'การควบคุมเครื่องมือวัด', hasTable: true, fields: ['equipment_id', 'calibration_date', 'next_due', 'status', 'technician'], icon: 'fa-ruler-combined' },
+                'training': { title: 'การฝึกอบรมและความสามารถ', hasTable: true, fields: ['employee_id', 'training_topic', 'completion_date', 'score', 'trainer'], icon: 'fa-users-cog' }
+            },
+            currentSection: 'dashboard',
+            currentData: [],
+            editingId: null
+        };
+
+        // --- Document Ready ---
+        $(document).ready(function () {
+            buildSidebarMenu();
+            initializeApp();
+
+            // Menu click handlers are now delegated for dynamically added elements
+            $('#sidebarMenu').on('click', '.nav-link[data-section]', function (e) {
+                e.preventDefault();
+
+                const $this = $(this);
+                const section = $this.data('section');
+
+                // Debounce the click
+                if (this.clickTimeout) {
+                    clearTimeout(this.clickTimeout);
+                }
+
+                $('.nav-link').removeClass('active');
+                $this.addClass('active');
+
+                this.clickTimeout = setTimeout(() => {
+                    loadSection(section);
+                }, 100);
+
+                if ($(window).width() < 768) {
+                    $('body').removeClass('sidebar-open');
+                }
+            });
+
+            $('#addNewBtn').click(() => openModal('add'));
+
+            $('#dataForm').submit(function (e) {
+                e.preventDefault();
+                if ($(this).valid()) {
+                    saveData();
+                }
+            });
+        });
+
+        // --- Core Functions ---
+
+        function buildSidebarMenu() {
+            const $menu = $('#sidebarMenu');
+            Object.entries(appConfig.sections).forEach(([key, value]) => {
+                const isActive = key === 'dashboard' ? 'active' : '';
+                const menuItem = `
+                <li class="nav-item">
+                    <a href="#" class="nav-link ${isActive}" data-section="${key}">
+                        <i class="nav-icon fas ${value.icon || 'fa-circle'}"></i>
+                        <p>${value.title}</p>
+                    </a>
+                </li>
+            `;
+                $menu.append(menuItem);
+            });
+        }
+
+        function initializeApp() {
+            loadSection('dashboard');
+        }
+
+        function showLoading() {
+            $('#loadingOverlay').css('display', 'flex');
+        }
+
+        function hideLoading() {
+            $('#loadingOverlay').fadeOut(200);
+        }
+
+        async function loadSection(section) {
+            const config = appConfig.sections[section];
+
+            appConfig.currentSection = section;
+
+            $('#pageTitle').text(config.title);
+            $('#breadcrumbActive').text(config.title);
+
+            if (config.hasTable) {
+                showLoading();
+                $('#dashboard-content').hide();
+                $('#crud-content').show();
+                $('#cardTitle').text(config.title);
+
+                await loadData(section);
+                renderTable(section);
+                hideLoading();
+            } else {
+                // Dashboard Logic
+                $('#crud-content').hide();
+                $('#dashboard-content').show();
+                loadDashboard();
+            }
+        }
+
+        async function loadDashboard() {
+            // Fetch Real Dashboard Data from /api/quality/dashboard-data
+            try {
+                const res = await fetch('/api/quality/dashboard-data');
+                const result = await res.json();
+
+                // Optional: You can implement a beautiful Dashboard UI here using result.kpi and result.top_defects
+                // For now, let's just make sure the welcome message is visible or show simple stats
+                if (result.kpi) {
+                    $('#dashboard-content').html(`
+                    <div class="row">
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-info">
+                                <div class="inner"><h3>${result.kpi.total}</h3><p>การตรวจสอบทั้งหมด</p></div>
+                                <div class="icon"><i class="fas fa-clipboard-list"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-success">
+                                <div class="inner"><h3>${result.kpi.pass}</h3><p>ผ่าน (PASS)</p></div>
+                                <div class="icon"><i class="fas fa-check"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-danger">
+                                <div class="inner"><h3>${result.kpi.fail}</h3><p>ไม่ผ่าน (FAIL)</p></div>
+                                <div class="icon"><i class="fas fa-times"></i></div>
+                            </div>
+                        </div>
+                         <div class="col-lg-3 col-6">
+                            <div class="small-box bg-warning">
+                                <div class="inner"><h3>${result.kpi.po}</h3><p>PO ที่ตรวจสอบ</p></div>
+                                <div class="icon"><i class="fas fa-industry"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="jumbotron bg-white">
+                         <h1 class="display-4">ยินดีต้อนรับสู่ระบบบริหารคุณภาพ</h1>
+                         <p class="lead">เลือกเมนูจากด้านซ้ายเพื่อจัดการข้อมูล</p>
+                    </div>
+                `);
+                }
+            } catch (e) {
+                console.error("Dashboard Load Error", e);
+            }
+        }
+
+        async function loadData(section) {
+            try {
+                // Use local API
+                const response = await fetch(`/api/quality/general/${section}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                if (result.success) {
+                    appConfig.currentData = result.data;
+                } else {
+                    console.error("API Error:", result.message);
+                    Swal.fire('Error', `Failed to load data: ${result.message}`, 'error');
+                    appConfig.currentData = [];
+                }
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                Swal.fire('Error', 'Could not connect to the data server.', 'error');
+                appConfig.currentData = [];
+            }
+        }
+
+        // --- Rendering Functions ---
+
+        function renderTable(section) {
+            const config = appConfig.sections[section];
+            const fields = config.fields;
+
+            let headerHtml = '<th>ID</th>';
+            fields.forEach(field => {
+                headerHtml += `<th>${getFieldLabel(field)}</th>`;
+            });
+            headerHtml += '<th>การดำเนินการ</th>';
+            $('#tableHeaders').html(`<tr>${headerHtml}</tr>`);
+
+            renderTableBody();
+        }
+
+        function renderTableBody() {
+            const $tableBody = $('#tableBody');
+            const fields = appConfig.sections[appConfig.currentSection].fields;
+
+            if (!appConfig.currentData || appConfig.currentData.length === 0) {
+                const colSpan = fields.length + 2;
+                $tableBody.html(`<tr><td colspan="${colSpan}" class="text-center">ไม่มีข้อมูล</td></tr>`);
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+
+            appConfig.currentData.forEach(item => {
+                const row = document.createElement('tr');
+
+                // Shorten ID display
+                const displayId = item.id.length > 10 ? item.id.substring(0, 8) + '...' : item.id;
+
+                row.innerHTML = `<td><span title="${item.id}">${displayId}</span></td>` +
+                    fields.map(field => `<td>${item[field] || '-'}</td>`).join('') +
+                    `<td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-info btn-sm" onclick="editItem('${item.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>`;
+
+                fragment.appendChild(row);
+            });
+
+            $tableBody.empty().append(fragment);
+        }
+
+        function getFieldLabel(field) {
+            const labels = { 'name': 'ชื่อ', 'target': 'เป้าหมาย', 'actual': 'ผลจริง', 'status': 'สถานะ', 'defect_type': 'ประเภทข้อบกพร่อง', 'count': 'จำนวน', 'percentage': 'เปอร์เซ็นต์', 'action': 'การดำเนินการ', 'material_code': 'รหัสวัตถุดิบ', 'supplier': 'ผู้จัดหา', 'inspection_date': 'วันที่ตรวจสอบ', 'result': 'ผลการตรวจสอบ', 'inspector': 'ผู้ตรวจสอบ', 'mold_id': 'รหัสแม่พิมพ์', 'condition': 'สภาพ', 'maintenance_date': 'วันที่บำรุงรักษา', 'type': 'ประเภท', 'technician': 'ช่างเทคนิค', 'next_due': 'กำหนดครั้งถัดไป', 'event_date': 'วันที่เหตุการณ์', 'event_type': 'ประเภทเหตุการณ์', 'description': 'รายละเอียด', 'operator': 'ผู้ปฏิบัติงาน', 'product_code': 'รหัสผลิตภัณฑ์', 'approval_date': 'วันที่อนุมัติ', 'remarks': 'หมายเหตุ', 'process_name': 'ชื่อกระบวนการ', 'measurement': 'ค่าวัด', 'ucl': 'ขีดจำกัดบน', 'lcl': 'ขีดจำกัดล่าง', 'line_number': 'หมายเลขไลน์', 'inspection_time': 'เวลาตรวจสอบ', 'findings': 'ผลการตรวจพบ', 'batch_number': 'หมายเลขแบทช์', 'quantity': 'จำนวน', 'order_number': 'หมายเลขคำสั่งซื้อ', 'packaging_date': 'วันที่บรรจุ', 'destination': 'จุดหมาย', 'document_id': 'รหัสเอกสาร', 'title': 'ชื่อเรื่อง', 'version': 'เวอร์ชั่น', 'effective_date': 'วันที่มีผล', 'owner': 'เจ้าของเอกสาร', 'nc_number': 'หมายเลข NC', 'disposition': 'การจัดการ', 'responsible': 'ผู้รับผิดชอบ', 'capa_number': 'หมายเลข CAPA', 'issue_description': 'รายละเอียดปัญหา', 'root_cause': 'สาเหตุหลัก', 'action_plan': 'แผนการดำเนินการ', 'due_date': 'วันที่กำหนด', 'equipment_id': 'รหัสอุปกรณ์', 'calibration_date': 'วันที่สอบเทียบ', 'employee_id': 'รหัสพนักงาน', 'training_topic': 'หัวข้อการฝึกอบรม', 'completion_date': 'วันที่เสร็จสิ้น', 'score': 'คะแนน', 'trainer': 'วิทยากร' };
+            return labels[field] || field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
+        }
+
+        function openModal(mode, id = null) {
+            const config = appConfig.sections[appConfig.currentSection];
+            const fields = config.fields;
+
+            let itemToEdit = null;
+            if (mode === 'edit') {
+                $('#modalTitle').text('แก้ไขข้อมูล');
+                appConfig.editingId = id;
+                itemToEdit = appConfig.currentData.find(item => item.id == id);
+                if (!itemToEdit) {
+                    Swal.fire('Error', 'Item not found for editing.', 'error');
+                    return;
+                }
+            } else {
+                $('#modalTitle').text('เพิ่มข้อมูลใหม่');
+                appConfig.editingId = null;
+            }
+
+            let formHtml = '';
+            fields.forEach(field => {
+                const label = getFieldLabel(field);
+                const value = mode === 'edit' ? (itemToEdit[field] || '') : '';
+                const inputType = field.includes('date') ? 'date' : 'text';
+
+                if (field === 'status' || field === 'result') {
+                    formHtml += `<div class="form-group"><label for="${field}">${label}</label><select class="form-control" id="${field}" name="${field}" required><option value="">เลือก${label}</option><option value="ผ่าน" ${value === 'ผ่าน' ? 'selected' : ''}>ผ่าน</option><option value="ไม่ผ่าน" ${value === 'ไม่ผ่าน' ? 'selected' : ''}>ไม่ผ่าน</option><option value="รอตรวจสอบ" ${value === 'รอตรวจสอบ' ? 'selected' : ''}>รอตรวจสอบ</option></select></div>`;
+                } else {
+                    formHtml += `<div class="form-group"><label for="${field}">${label}</label><input type="${inputType}" class="form-control" id="${field}" name="${field}" value="${value}" required></div>`;
+                }
+            });
+
+            $('#modalBody').html(formHtml);
+
+            // Reset and initialize validation
+            const $form = $('#dataForm');
+            $form.validate().destroy();
+            $form.validate({
+                errorElement: 'span',
+                errorPlacement: (error, element) => {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: (element) => $(element).addClass('is-invalid'),
+                unhighlight: (element) => $(element).removeClass('is-invalid')
+            });
+
+            $('#dataModal').modal('show');
+        }
+
+        // --- Data Manipulation Functions ---
+
+        async function saveData() {
+            $('#dataModal').modal('hide');
+            showLoading();
+
+            const formData = $('#dataForm').serializeArray();
+            const data = {};
+            formData.forEach(field => {
+                data[field.name] = field.value;
+            });
+
+            let action = 'create';
+            if (appConfig.editingId !== null) {
+                action = 'update';
+                data.id = appConfig.editingId;
+            }
+
+            const payload = { action, section: appConfig.currentSection, data };
+
+            try {
+                // Updated to use Local API
+                const response = await fetch('/api/quality/general', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (!result.success) throw new Error(result.message);
+
+                await loadData(appConfig.currentSection);
+                renderTableBody();
+                Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'บันทึกข้อมูลเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+
+            } catch (error) {
+                console.error("Save Error:", error);
+                Swal.fire('Error', 'Could not save data: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Expose functions to global scope for onclick handlers
+        window.editItem = function (id) {
+            openModal('edit', id);
+        };
+
+        window.deleteItem = function (id) {
+            Swal.fire({
+                title: 'คุณแน่ใจหรือไม่?',
+                text: 'ข้อมูลที่ลบแล้วจะไม่สามารถกู้คืนได้!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'ใช่, ลบเลย!',
+                cancelButtonText: 'ยกเลิก'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    showLoading();
+                    const payload = { action: 'delete', section: appConfig.currentSection, data: { id: id } };
+
+                    try {
+                        const response = await fetch('/api/quality/general', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await response.json();
+                        if (!result.success) throw new Error(result.message);
+
+                        await loadData(appConfig.currentSection);
+                        renderTableBody();
+                        Swal.fire({ icon: 'success', title: 'ลบแล้ว!', text: 'ข้อมูลของคุณถูกลบเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+
+                    } catch (error) {
+                        console.error("Delete Error:", error);
+                        Swal.fire('Error', 'Could not delete data: ' + error.message, 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+
+</html>

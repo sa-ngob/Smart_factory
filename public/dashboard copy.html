@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Welcome - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+        .page-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-image: url('/uploads/items/smart Factory.png');
+            background-size: cover;
+            background-position: center center;
+            position: relative;
+        }
+        
+        .welcome-container {
+            text-align: center;
+            padding: 5rem;
+            animation: fadeIn 1.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .welcome-title {
+            font-size: 5rem;
+            font-weight: 800;
+            color: #13c693;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        .welcome-message {
+            font-size: 5rem;
+            font-weight: 300;
+            color: #1c58a2;
+            margin-bottom: 2.5rem;
+        }
+        .user-name {
+            font-weight: 600;
+            color: #93c5fd;
+        }
+        .running-text {
+            font-size: 5rem;
+            color: hsl(237, 79%, 48%);
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem;
+            border-radius: 50px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="container-fluid">
+                <div class="welcome-container">
+                    <p class="welcome-message">
+                        ยินดีต้อนรับ <span class="user-name" id="display-username">ผู้ใช้งาน</span> 
+                    </p>
+                    <h1 class="welcome-title">welcome toSmart Factory</h1>
+                    <marquee class="running-text" behavior="scroll" direction="left" scrollamount="10">
+                        ภาพรวมโรงงาน • การผลิต (Real-time) • การขายและการตลาด • คลังสินค้า • Workflow การขาย
+                    </marquee>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        // ===================================================================================
+        // ✨ COMMENT 1: สร้างฟังก์ชันกลางสำหรับเรียก API (Central API Fetch Function)
+        // ฟังก์ชันนี้จะทำหน้าที่เป็น "ตัวกลาง" ในการเรียก API ทุกครั้ง
+        // - เพิ่ม credentials: 'include' เพื่อให้แน่ใจว่า Cookie (ที่เก็บ Session) ถูกส่งไปด้วย
+        // - ตรวจจับ Error 401 Unauthorized และสั่งให้ Redirect ไปหน้า Login ทันที
+        // - ทำให้เราไม่ต้องเขียนโค้ดดักจับ Error ซ้ำๆ ในทุกที่ที่เรียก API
+        // ===================================================================================
+        async function fetchWithAuth(url, options = {}) {
+            const defaultOptions = {
+                // บรรทัดนี้สำคัญมาก! เพื่อบอกให้ Browser ส่ง Cookie ไปกับ Request ด้วย
+                credentials: 'include', 
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers,
+                },
+                ...options
+            };
+
+            const response = await fetch(url, defaultOptions);
+
+            // ---- นี่คือหัวใจของการแก้ไข ----
+            // ถ้าเซิร์ฟเวอร์ตอบกลับมาว่า "ไม่ได้รับอนุญาต" (Session หมดอายุ หรือยังไม่ Login)
+            if (response.status === 401) {
+                // สั่งให้ Browser เปลี่ยนหน้าไปที่ /login.html ทันที
+                window.location.href = '/login.html';
+                // หยุดการทำงานของโค้ดส่วนนี้ทันที เพื่อไม่ให้เกิด Error อื่นตามมา
+                return Promise.reject(new Error('Unauthorized: Redirecting to login.'));
+            }
+            
+            // ถ้าทุกอย่างปกติ ให้ส่ง response กลับไปให้โค้ดส่วนอื่นทำงานต่อ
+            return response;
+        }
+
+
+        // ===================================================================================
+        // ✨ COMMENT 2: การนำฟังก์ชันกลางไปใช้งาน (Implementation)
+        // เราจะเปลี่ยนจากการใช้ `fetch(...)` แบบเดิม มาใช้ `fetchWithAuth(...)` ที่เราสร้างขึ้นแทน
+        // และใช้โครงสร้าง `try...catch` เพื่อจัดการกับ Error ที่อาจเกิดขึ้น
+        // ===================================================================================
+
+        // --- โหลด Sidebar ---
+        async function loadSidebar() {
+            try {
+                // เรียกใช้ฟังก์ชันกลางที่เราสร้างขึ้น
+                const response = await fetchWithAuth('/api/sidebar'); 
+                const sidebarHtml = await response.text();
+                document.getElementById('sidebar').innerHTML = sidebarHtml;
+            } catch (error) {
+                // ถ้าเกิด Error (เช่น 401) การ Redirect จะเกิดขึ้นใน fetchWithAuth แล้ว
+                // ตรงนี้เราแค่ log error ไว้ดูใน console เพื่อการ Debug เท่านั้น
+                console.error("Could not load sidebar:", error.message);
+            }
+        }
+
+        // --- โหลดข้อมูลผู้ใช้ ---
+        async function loadUserInfo() {
+            try {
+                // เรียกใช้ฟังก์ชันกลางอีกครั้ง
+                const response = await fetchWithAuth('/api/user-info');
+                const data = await response.json();
+
+                if (data.success && data.displayName) {
+                    document.getElementById('display-username').textContent = data.displayName;
+                }
+            } catch (error) {
+                console.error("Could not load user info:", error.message);
+            }
+        }
+
+        // --- เรียกใช้งานฟังก์ชันทั้งหมด ---
+        loadSidebar();
+        loadUserInfo();
+
+    });
+    </script>
+</body>
+</html>

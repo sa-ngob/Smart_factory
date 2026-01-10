@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Workflow Dashboard - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <style>
+        .dashboard-col .card-body {
+            max-height: 65vh;
+            overflow-y: auto;
+        }
+
+        .dashboard-card {
+            border-left: 3px solid var(--tblr-primary);
+            margin-bottom: 0.75rem;
+            padding: 0.75rem;
+            background-color: var(--tblr-bg-surface);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar">
+            <div class="text-center p-4 text-white">กำลังโหลดเมนู...</div>
+        </aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <h2 class="page-title">Workflow Dashboard</h2>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="row g-4">
+                        <div class="col-12 col-md-6 col-lg-3 dashboard-col">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">1. รอออกใบแจ้งหนี้</h3>
+                                    <div class="ms-auto"><span class="badge bg-blue-lt"
+                                            id="pending-invoices-count">0</span></div>
+                                </div>
+                                <div class="card-body" id="pending-invoices-list">
+                                    <div class="text-center text-muted">กำลังโหลด...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 dashboard-col">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">2. รอออกใบวางบิล</h3>
+                                    <div class="ms-auto"><span class="badge bg-purple-lt"
+                                            id="pending-billing-count">0</span></div>
+                                </div>
+                                <div class="card-body" id="pending-billing-list">
+                                    <div class="text-center text-muted">กำลังโหลด...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 dashboard-col">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">3. รอรับชำระ</h3>
+                                    <div class="ms-auto"><span class="badge bg-orange-lt"
+                                            id="pending-payment-count">0</span></div>
+                                </div>
+                                <div class="card-body" id="pending-payment-list">
+                                    <div class="text-center text-muted">กำลังโหลด...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 dashboard-col">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">4. รอตรวจสอบยอดเงิน</h3>
+                                    <div class="ms-auto"><span class="badge bg-green-lt"
+                                            id="pending-confirmation-count">0</span></div>
+                                </div>
+                                <div class="card-body" id="pending-confirmation-list">
+                                    <div class="text-center text-muted">กำลังโหลด...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // --- ส่วนที่ 1: ฟังก์ชันพื้นฐาน (โหลด Sidebar, User Info) ---
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                    // setActiveMenuItem();
+                } catch (error) {
+                    console.error("Could not load sidebar:", error);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error);
+                }
+            }
+
+            // --- ส่วนที่ 2: ฟังก์ชันสำหรับ Workflow Dashboard ---
+            const formatDate = (dateString) => !dateString ? '' : new Date(dateString).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const formatCurrency = (num) => (num === null || num === undefined) ? '0.00' : Number(num).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+
+            // ✅ highlight: นำฟังก์ชันการแสดงผลรายละเอียดเดิมของคุณกลับมาทั้งหมด
+            function renderPendingInvoices(items) {
+                const listEl = document.getElementById('pending-invoices-list');
+                document.getElementById('pending-invoices-count').textContent = items.length;
+                if (items.length === 0) { listEl.innerHTML = '<div class="text-center text-muted">ไม่มีรายการ</div>'; return; }
+                listEl.innerHTML = items.map(item => `
+                <div class="dashboard-card shadow-sm">
+                    <div class="d-flex justify-content-between">
+                        <strong><a href="/delivery-order-detail.html?id=${item.id}" target="_blank">${item.do_number}</a></strong>
+                        <small class="text-muted">${formatDate(item.shipping_date)}</small>
+                    </div>
+                    <div class="text-muted">${item.customer_name}</div>
+                    <div class="mt-2 text-end">
+                        <a href="/create-invoice.html?from_do=${item.id}" class="btn btn-sm btn-primary">สร้าง Invoice</a>
+                    </div>
+                </div>`).join('');
+            }
+
+            function renderPendingBilling(items) {
+                const listEl = document.getElementById('pending-billing-list');
+                document.getElementById('pending-billing-count').textContent = items.length;
+                if (items.length === 0) { listEl.innerHTML = '<div class="text-center text-muted">ไม่มีรายการ</div>'; return; }
+                listEl.innerHTML = items.map(item => `
+                <div class="dashboard-card shadow-sm" style="border-left-color: var(--tblr-purple);">
+                    <strong>${item.customer_name}</strong>
+                    <div class="text-muted">${item.invoice_count} invoices / ยอดรวม ${formatCurrency(item.total_amount)}</div>
+                    <div class="mt-2 text-end">
+                        <a href="/create-billing-note.html?customer_id=${item.customer_id}" class="btn btn-sm btn-purple">สร้างใบวางบิล</a>
+                    </div>
+                </div>`).join('');
+            }
+
+            function renderPendingPayments(items) {
+                const listEl = document.getElementById('pending-payment-list');
+                document.getElementById('pending-payment-count').textContent = items.length;
+                if (items.length === 0) { listEl.innerHTML = '<div class="text-center text-muted">ไม่มีรายการ</div>'; return; }
+                listEl.innerHTML = items.map(item => `
+                <div class="dashboard-card shadow-sm" style="border-left-color: var(--tblr-orange);">
+                    <div class="d-flex justify-content-between">
+                        <strong><a href="/billing-note-detail.html?id=${item.id}" target="_blank">${item.bn_number}</a></strong>
+                        <small class="text-muted">Due: ${formatDate(item.due_date)}</small>
+                    </div>
+                    <div class="text-muted">${item.customer_name}</div>
+                    <div class="text-end fw-bold">${formatCurrency(item.total_amount)}</div>
+                    <div class="mt-2 text-end">
+                        <a href="/create-receipt.html?bn_id=${item.id}" class="btn btn-sm btn-orange">บันทึกรับเงิน</a>
+                    </div>
+                </div>`).join('');
+            }
+
+            function renderPendingConfirmations(items) {
+                const listEl = document.getElementById('pending-confirmation-list');
+                document.getElementById('pending-confirmation-count').textContent = items.length;
+                if (items.length === 0) { listEl.innerHTML = '<div class="text-center text-muted">ไม่มีรายการ</div>'; return; }
+                listEl.innerHTML = items.map(item => `
+                <div class="dashboard-card shadow-sm" style="border-left-color: var(--tblr-green);">
+                    <div class="d-flex justify-content-between">
+                        <strong><a href="/receipt-detail.html?id=${item.id}" target="_blank">${item.receipt_number}</a></strong>
+                        <span class="badge bg-green-lt">${item.payment_method}</span>
+                    </div>
+                    <div class="text-muted">${item.customer_name}</div>
+                    <div class="text-end fw-bold">${formatCurrency(item.total_amount_paid)}</div>
+                    <div class="mt-2 text-end">
+                        <button class="btn btn-sm btn-success btn-confirm-payment" data-receipt-id="${item.id}">ยืนยันยอดเงิน</button>
+                    </div>
+                </div>`).join('');
+            }
+
+            async function confirmPayment(receiptId) {
+                if (!confirm('คุณต้องการยืนยันการรับเงินสำหรับใบเสร็จนี้ใช่หรือไม่?')) return;
+                try {
+                    const response = await fetchWithAuth(`/api/receipts/${receiptId}/confirm`, { method: 'POST' });
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error || 'ไม่สามารถยืนยันได้');
+                    alert('ยืนยันยอดเงินสำเร็จ!');
+                    loadDashboardData();
+                } catch (error) {
+                    alert('เกิดข้อผิดพลาด: ' + error.message);
+                }
+            }
+
+            async function loadDashboardData() {
+                try {
+                    const [invoicesRes, billingRes, paymentsRes, confirmationsRes] = await Promise.all([
+                        fetchWithAuth('/api/workflow/pending-invoices'),
+                        fetchWithAuth('/api/workflow/pending-billing'),
+                        fetchWithAuth('/api/workflow/pending-payments'),
+                        fetchWithAuth('/api/workflow/pending-confirmations')
+                    ]);
+                    const [invoices, billing, payments, confirmations] = await Promise.all([
+                        invoicesRes.json(), billingRes.json(), paymentsRes.json(), confirmationsRes.json()
+                    ]);
+
+                    if (invoices.success) { renderPendingInvoices(invoices.data); }
+                    if (billing.success) { renderPendingBilling(billing.data); }
+                    if (payments.success) { renderPendingPayments(payments.data); }
+                    if (confirmations.success) { renderPendingConfirmations(confirmations.data); }
+                } catch (error) {
+                    console.error("Failed to load dashboard data:", error);
+                    document.querySelector('.page-body .container-xl').innerHTML = `<div class="alert alert-danger">Failed to load workflow data. Please check the console.</div>`;
+                }
+            }
+
+            document.body.addEventListener('click', function (event) {
+                if (event.target.classList.contains('btn-confirm-payment')) {
+                    const receiptId = event.target.dataset.receiptId;
+                    confirmPayment(receiptId);
+                }
+            });
+
+            // --- ส่วนที่ 3: เรียกใช้งานฟังก์ชันทั้งหมด ---
+            loadSidebar();
+            loadUserInfo();
+            loadDashboardData();
+        });
+    </script>
+</body>
+
+</html>

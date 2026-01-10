@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>จัดการผู้ใช้ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col"><h2 class="page-title">จัดการผู้ใช้</h2></div>
+                        <div class="col-auto ms-auto">
+                            <a href="/add-user.html" class="btn btn-primary">เพิ่มผู้ใช้ใหม่</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead><tr><th>ID</th><th>ชื่อ-สกุล</th><th>Email</th><th>Role</th><th></th></tr></thead>
+                                <tbody id="user-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const sidebarRes = await fetch('/api/sidebar');
+        document.getElementById('sidebar').innerHTML = await sidebarRes.text();
+
+        const userTableBody = document.getElementById('user-table-body');
+
+        async function loadUsers() {
+            const response = await fetch('/api/users');
+            const result = await response.json();
+            userTableBody.innerHTML = '';
+            if (result.success) {
+                result.data.forEach(user => {
+                    const row = `<tr>
+                        <td>${user.id}</td>
+                        <td>${user.fullName}</td>
+                        <td>${user.email}</td>
+                        <td><span class="badge bg-secondary-lt">${user.role}</span></td>
+                        <td>
+                            <a href="/edit-user.html?id=${user.id}" class="btn btn-sm">แก้ไข</a>
+                            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${user.id}" data-name="${user.fullName}">ลบ</button>
+                        </td>
+                    </tr>`;
+                    userTableBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        userTableBody.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const userId = e.target.dataset.id;
+                const userName = e.target.dataset.name;
+                if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้ "${userName}"?`)) {
+                    const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+                    const result = await res.json();
+                    if(result.success) {
+                        loadUsers();
+                    } else {
+                        alert(result.message);
+                    }
+                }
+            }
+        });
+
+        loadUsers();
+    });
+    </script>
+</body>
+</html>

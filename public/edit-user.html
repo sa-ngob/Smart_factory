@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>แก้ไขผู้ใช้ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-fluid"><h2 class="page-title" id="page-title">แก้ไขผู้ใช้</h2></div>
+            </div>
+            <div class="page-body p-md-4">
+                <div class="container-fluid">
+                    <div class="card">
+                        <div class="card-body">
+                            <form id="edit-user-form">
+                                <input type="hidden" name="id">
+                                <div class="mb-3"><label class="form-label">ชื่อ-สกุล</label><input type="text" class="form-control" name="fullName" required></div>
+                                <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
+                                <div class="mb-3"><label class="form-label">รหัสผ่านใหม่ (ไม่บังคับ)</label><input type="password" class="form-control" name="password" autocomplete="new-password"><small class="form-hint">เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน</small></div>
+                                <div class="mb-3"><label class="form-label">Role</label>
+                                    <select class="form-select" name="role" required>
+                                        <option value="user">User</option>
+                                        <option value="qc">QC</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div class="form-footer">
+                                    <a href="/users.html" class="btn btn-link">ยกเลิก</a>
+                                    <button type="submit" class="btn btn-primary ms-auto">บันทึกการเปลี่ยนแปลง</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ตอนนี้สามารถเรียกใช้ fetchWithAuth() ได้เลย
+            
+            async function loadSidebar() {
+                try {
+                    // ใช้ฟังก์ชันจากไฟล์กลางเพื่อเรียก API
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+            
+            // เรียกใช้งานฟังก์ชันทั้งหมดที่หน้านี้ต้องการ
+            loadSidebar();
+            loadUserInfo();
+            // หากหน้านี้ต้องโหลดข้อมูลอื่นอีก ก็เรียกฟังก์ชันเพิ่มตรงนี้
+        });
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const sidebarRes = await fetch('/api/sidebar');
+        document.getElementById('sidebar').innerHTML = await sidebarRes.text();
+
+        const form = document.getElementById('edit-user-form');
+        const pageTitle = document.getElementById('page-title');
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get('id');
+
+        if (!userId) {
+            alert('ไม่พบ ID ผู้ใช้');
+            window.location.href = '/users.html';
+            return;
+        }
+
+        // 1. ดึงข้อมูลผู้ใช้เดิมมาแสดง
+        const res = await fetch(`/api/users/${userId}`);
+        const result = await res.json();
+        if (result.success) {
+            const user = result.data;
+            form.elements.id.value = user.id;
+            form.elements.fullName.value = user.fullName;
+            form.elements.email.value = user.email;
+            form.elements.role.value = user.role;
+            pageTitle.textContent = `แก้ไขผู้ใช้: ${user.fullName}`;
+        } else {
+            alert(result.message);
+            window.location.href = '/users.html';
+        }
+
+        // 2. ส่งข้อมูลที่แก้ไขแล้วกลับไป
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            // ถ้าไม่ได้กรอกรหัสผ่านใหม่ ให้ลบ key ออกไปเพื่อไม่ให้ส่งไปอัปเดต
+            if (!data.password) {
+                delete data.password;
+            }
+
+            const response = await fetch(`/api/users/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('แก้ไขข้อมูลสำเร็จแล้ว');
+                window.location.href = '/users.html';
+            } else {
+                alert('เกิดข้อผิดพลาดในการแก้ไขข้อมูล');
+            }
+        });
+    });
+    </script>
+</body>
+</html>

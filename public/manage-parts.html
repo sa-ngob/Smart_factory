@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+	<title>จัดการ Part List - Smart Factory</title>
+	<link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+	<div class="page">
+		<!-- Sidebar -->
+	  <aside id="sidebar" class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+		<!-- Placeholder ขณะรอโหลด sidebar จาก server -->
+		<div class="sidebar-placeholder p-3 text-muted">กำลังโหลดเมนู...</div>
+	  </aside> <!-- ✅ ปิดแท็ก aside ที่หายไป -->
+
+		<div class="page-wrapper">
+			<div class="page-header d-print-none">
+				<div class="container-xl">
+					<div class="row g-2 align-items-center">
+						<div class="col">
+							<h2 class="page-title" id="page-title">
+								จัดการ Part List สำหรับแม่พิมพ์: กำลังโหลด...
+							</h2>
+						</div>
+						<div class="col-auto ms-auto d-print-none">
+							<a href="#" id="back-to-details-btn" class="btn">
+								กลับไปที่หน้ารายละเอียด
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="page-body">
+				<div class="container-xl">
+					<div class="row g-4">
+						<!-- Form สำหรับเพิ่ม/แก้ไข Part -->
+						<div class="col-lg-4">
+							<form id="part-form" class="card">
+								<div class="card-header">
+									<h3 class="card-title" id="part-form-title">เพิ่ม Part ใหม่</h3>
+								</div>
+								<div class="card-body">
+									<input type="hidden" id="part-id" name="id">
+									<div class="mb-3">
+										<label class="form-label required">รหัสชิ้นส่วน</label>
+										<input type="text" name="part_number" class="form-control" required>
+									</div>
+									<div class="mb-3">
+										<label class="form-label">ชื่อชิ้นส่วน</label>
+										<input type="text" name="part_name" class="form-control">
+									</div>
+									<div class="row">
+										<div class="col-6 mb-3"><label class="form-label">จำนวน</label><input type="number" name="quantity" class="form-control" value="1"></div>
+										<div class="col-6 mb-3"><label class="form-label">วัสดุ</label><input type="text" name="material" class="form-control"></div>
+									</div>
+									<div class="mb-3"><label class="form-label">หมายเหตุ</label><textarea name="notes" rows="3" class="form-control"></textarea></div>
+								</div>
+								<div class="card-footer text-end">
+									<button type="button" id="btn-clear-part-form" class="btn">ล้างฟอร์ม</button>
+									<button type="submit" class="btn btn-primary">บันทึก</button>
+								</div>
+							</form>
+						</div>
+						<!-- ตารางแสดง Part List -->
+						<div class="col-lg-8">
+							<div class="card">
+								<div class="table-responsive">
+									<table class="table table-vcenter card-table">
+										<thead>
+											<tr>
+												<th>รหัสชิ้นส่วน</th>
+												<th>ชื่อชิ้นส่วน</th>
+												<th class="text-center">จำนวน</th>
+												<th>วัสดุ</th>
+												<th class="w-1"></th>
+											</tr>
+										</thead>
+										<tbody id="part-list-body">
+											<!-- Part List จะถูกแสดงที่นี่ -->
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+	<script src="/js/auth-client.js" defer></script>
+
+	<script defer>
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				if (typeof fetchWithAuth !== 'function') {
+					console.warn('fetchWithAuth not found; sidebar will not be loaded.');
+					return;
+				}
+				const resp = await fetchWithAuth('/api/sidebar');
+				if (!resp.ok) {
+					console.warn('Failed to load sidebar, status:', resp.status);
+					return;
+				}
+				const html = await resp.text();
+				const sidebarEl = document.getElementById('sidebar');
+				if (sidebarEl) sidebarEl.innerHTML = html;
+
+				const curPath = window.location.pathname || '/manage-parts.html';
+				const activeLink = sidebarEl.querySelector('.nav-link[href="' + curPath + '"]');
+				if (activeLink) activeLink.classList.add('active');
+			} catch (err) {
+				console.error('Could not load sidebar:', err);
+			}
+		});
+	</script>
+
+	<!-- Fallback fetchWithAuth: ส่ง cookies (credentials) และ handle 401 -->
+	<script>
+		// สร้าง global fetchWithAuth ถ้ายังไม่มี (ช่วยแก้ปัญหา 401 จากคำขอที่ไม่ได้ส่ง cookie)
+		if (typeof fetchWithAuth !== 'function') {
+			window.fetchWithAuth = async function (url, options = {}) {
+				const opts = Object.assign({}, options, { credentials: 'include' });
+				// Ensure headers object exists (but do not overwrite if body is FormData)
+				opts.headers = Object.assign({}, opts.headers || {});
+				// Do not force Content-Type for FormData
+				if (!(opts.body instanceof FormData) && !opts.headers['Content-Type']) {
+					opts.headers['Content-Type'] = 'application/json';
+				}
+				const res = await fetch(url, opts);
+				if (res.status === 401) {
+					// ถ้าผู้ใช้ไม่ authenticated ให้ไปหน้า login
+					window.location.href = '/login.html';
+				}
+				return res;
+			};
+		}
+	</script>
+
+	<script src="/manage-parts.js" defer></script>
+</body>
+</html>

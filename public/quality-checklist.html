@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>เลือกและบันทึกผลตรวจสอบ - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet" />
+    <style>
+        .drawing-container {
+            position: relative;
+            border: 1px dashed #ccc;
+            min-height: 300px;
+            background-color: #f9fafb;
+            overflow: auto;
+            /* Allow scrolling for large images on mobile */
+        }
+
+        .drawing-image {
+            max-width: 100%;
+            display: block;
+        }
+
+        .inspection-point-display {
+            position: absolute;
+            width: 36px;
+            /* Larger touch target */
+            height: 36px;
+            border: 2px solid;
+            border-radius: 50%;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        .point-pending {
+            border-color: #6c757d;
+        }
+
+        .point-pass {
+            border-color: #2fb344;
+            background-color: rgba(47, 179, 68, 0.9);
+        }
+
+        .point-fail {
+            border-color: #d63939;
+            background-color: rgba(214, 57, 57, 0.9);
+        }
+
+        tr.point-row-pass {
+            background-color: rgba(47, 179, 68, 0.1) !important;
+        }
+
+        tr.point-row-fail {
+            background-color: rgba(214, 57, 57, 0.1) !important;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .page-body {
+                padding: 0.5rem;
+                padding-bottom: 80px;
+                /* Space for sticky footer */
+            }
+
+            .btn-group-lg-mobile>.btn {
+                padding: 0.5rem 1rem;
+                font-size: 1rem;
+            }
+
+            .table-mobile-stack td {
+                display: block;
+                width: 100%;
+                border: none;
+                padding: 0.25rem 0.5rem;
+            }
+
+            .table-mobile-stack tr {
+                border-bottom: 1px solid #333;
+                display: block;
+                padding: 0.5rem 0;
+            }
+
+            /* Sticky Footer for Save Button */
+            .sticky-bottom-actions {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #1f2937;
+                /* Dark bg */
+                padding: 1rem;
+                border-top: 1px solid #374151;
+                z-index: 1000;
+                box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.2);
+            }
+
+            .drawing-container {
+                min-height: 250px;
+            }
+
+            .input-measurement {
+                width: 100% !important;
+                font-size: 1.1rem;
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <p>
+                        Logged in as: <strong id="display-username">Loading...</strong>
+                    </p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">ตรวจสอบคุณภาพสำหรับ MO: <span id="page-title-mo"></span></h2>
+                        </div>
+                        <div class="col-auto ms-auto d-print-none"><a href="/quality-inspection.html"
+                                class="btn btn-outline-secondary">กลับไปหน้าค้นหา</a></div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="card" id="select-standard-section">
+                        <div class="card-header">
+                            <h3 class="card-title">กรุณาเลือกขั้นตอนการตรวจสอบ</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="standard-options-container" class="list-group"></div>
+                        </div>
+                    </div>
+
+                    <div id="inspection-section" class="d-none mt-3">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">ข้อมูลคำสั่งผลิต</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4"><strong>MO Number:</strong> <span id="info-mo-number"></span>
+                                    </div>
+                                    <div class="col-md-4"><strong>Item Code:</strong> <span id="info-item-code"></span>
+                                    </div>
+                                    <div class="col-md-4"><strong>Item Name:</strong> <span id="info-item-name"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="categories-display-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Footer Container (Will be populated dynamically) -->
+    <div id="sticky-footer-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar');
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                    const activeLink = document.querySelector('.dropdown-item[href="/quality-inspection.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                        const parentDropdown = activeLink.closest('.nav-item.dropdown');
+                        if (parentDropdown) parentDropdown.querySelector('.dropdown-toggle').classList.add('active');
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            const standardOptionsContainer = document.getElementById('standard-options-container');
+            const inspectionSection = document.getElementById('inspection-section');
+            const categoriesContainer = document.getElementById('categories-display-container');
+            const stickyFooterContainer = document.getElementById('sticky-footer-container');
+            const urlParams = new URLSearchParams(window.location.search);
+            const moNumber = urlParams.get('mo');
+
+            let currentInspectionData = null;
+            const userId = 1; // TODO: Get actual user ID from session/token if possible, or backend handles it via auth middleware
+
+            if (!moNumber) {
+                document.getElementById('select-standard-section').innerHTML = '<div class="alert alert-danger">ไม่พบรหัสคำสั่งผลิต (MO Number)</div>';
+                return;
+            }
+
+            document.getElementById('page-title-mo').textContent = moNumber;
+
+            async function loadStandardOptions() {
+                try {
+                    const response = await fetchWithAuth(`/api/quality/standards-list/mo/${moNumber}`);
+                    if (!response.ok) {
+                        const errData = await response.json();
+                        throw new Error(errData.error || 'ไม่พบข้อมูล');
+                    }
+                    const standards = await response.json();
+
+                    standardOptionsContainer.innerHTML = ''; // Clear previous content
+
+                    if (standards.length === 0) {
+                        standardOptionsContainer.innerHTML = '<div class="alert alert-warning">ไม่พบมาตรฐานสำหรับสินค้านี้</div>';
+                        return;
+                    }
+
+                    // Create Select Element
+                    const select = document.createElement('select');
+                    select.id = 'standard-select';
+                    select.className = 'form-select form-select-lg'; // Large for better visibility
+                    select.innerHTML = '<option value="" selected disabled>-- กรุณาเลือกขั้นตอนการตรวจสอบ --</option>';
+
+                    // Map types to standard IDs
+                    const typeMap = new Map();
+                    standards.forEach(std => {
+                        // Support splitting "First Lot, In-Process" into distinct selectable options
+                        const types = (std.standard_name || '').split(',').map(t => t.trim());
+                        types.forEach(type => {
+                            if (type && !typeMap.has(type)) { // Use first match or keep existing logic
+                                typeMap.set(type, std.id);
+                            }
+                        });
+                    });
+
+                    // Define preferred order
+                    const order = ['First Lot', 'In-Process', 'Outgoing'];
+                    const sortedTypes = Array.from(typeMap.keys()).sort((a, b) => {
+                        const idxA = order.indexOf(a);
+                        const idxB = order.indexOf(b);
+                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                        if (idxA !== -1) return -1;
+                        if (idxB !== -1) return 1;
+                        return a.localeCompare(b);
+                    });
+
+                    sortedTypes.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = typeMap.get(type); // standardId
+                        option.textContent = type;
+                        option.dataset.type = type; // Store type name if needed
+                        select.appendChild(option);
+                    });
+
+                    standardOptionsContainer.appendChild(select);
+
+                    // Add change listener
+                    let previousValue = "";
+                    select.addEventListener('change', async (e) => {
+                        // Confirm if there are unsaved changes
+                        if (pendingLogs.length > 0) {
+                            if (!confirm("คุณมีข้อมูลที่ยังไม่ได้บันทึก การเปลี่ยนขั้นตอนจะทำให้ข้อมูลสูญหาย ยืนยันที่จะเปลี่ยนหรือไม่?")) {
+                                select.value = previousValue; // Revert
+                                return;
+                            }
+                        }
+
+                        // Clear pending logs
+                        pendingLogs = [];
+                        previousValue = select.value;
+
+                        const standardId = select.value;
+                        if (!standardId) return;
+
+                        try {
+                            const response = await fetchWithAuth(`/api/quality/standards/${standardId}`);
+                            if (!response.ok) throw new Error("ไม่สามารถโหลดรายละเอียดมาตรฐานได้");
+                            const fullStandardData = await response.json();
+
+                            currentInspectionData = {
+                                mo_number: moNumber,
+                                item_code: fullStandardData.item_code,
+                                item_name: fullStandardData.item_name,
+                                standard: { id: fullStandardData.id, name: fullStandardData.standard_name, categories: fullStandardData.categories }
+                            };
+
+                            renderInspectionView();
+                            inspectionSection.classList.remove('d-none');
+                        } catch (error) {
+                            alert(`เกิดข้อผิดพลาด: ${error.message}`);
+                        }
+                    });
+
+                } catch (error) {
+                    standardOptionsContainer.innerHTML = `<div class="alert alert-warning">${error.message}</div>`;
+                }
+            }
+
+            let pendingLogs = [];
+
+            async function handleSaveAll() {
+                if (pendingLogs.length === 0) {
+                    alert("ไม่มีข้อมูลใหม่สำหรับการบันทึก");
+                    return;
+                }
+
+                if (!confirm(`ยืนยันการบันทึกผลตรวจสอบจำนวน ${pendingLogs.length} รายการ?`)) return;
+
+                const saveBtn = document.getElementById('btn-confirm-save');
+                if (saveBtn) {
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังบันทึก...';
+                }
+
+                let successCount = 0;
+                let failCount = 0;
+
+                try {
+                    for (const log of pendingLogs) {
+                        try {
+                            const response = await fetchWithAuth('/api/quality/logs', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(log)
+                            });
+                            if (!response.ok) throw new Error('API Error');
+                            successCount++;
+                        } catch (err) {
+                            console.error(err);
+                            failCount++;
+                        }
+                    }
+
+                    alert(`บันทึกเสร็จสิ้น: สำเร็จ ${successCount}, ล้มเหลว ${failCount}`);
+                    pendingLogs = []; // Clear queue
+
+                    // Optional: Refresh view or redirect
+                    // window.location.reload(); 
+                } catch (error) {
+                    alert("System Error: " + error.message);
+                } finally {
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<span class="fs-2">ยืนยันการบันทึก (Save Changes)</span>';
+                    }
+                }
+            }
+
+            function renderInspectionView() {
+                document.getElementById('info-mo-number').textContent = currentInspectionData.mo_number;
+                document.getElementById('info-item-code').textContent = currentInspectionData.item_code;
+                document.getElementById('info-item-name').textContent = currentInspectionData.item_name;
+                categoriesContainer.innerHTML = '';
+                currentInspectionData.standard.categories.forEach(cat => {
+                    const card = document.createElement('div');
+                    card.className = 'card mb-3';
+                    card.innerHTML = `
+                    <div class="card-header"><h3 class="card-title">${cat.category_name}</h3></div>
+                    <div class="card-body row">
+                        <div class="col-lg-5 mb-3 mb-lg-0"><div class="drawing-container" id="drawing-container-${cat.id}"><img class="drawing-image" id="drawing-image-${cat.id}" src="/${cat.drawing_image_path}"></div></div>
+                        <div class="col-lg-7"><div class="table-responsive"><table class="table table-vcenter table-sm table-mobile-stack"><tbody id="checklist-body-${cat.id}"></tbody></table></div></div>
+                    </div>`;
+                    categoriesContainer.appendChild(card);
+
+                    const drawingContainer = card.querySelector(`#drawing-container-${cat.id}`);
+                    const drawingImage = card.querySelector(`#drawing-image-${cat.id}`);
+                    const checklistBody = card.querySelector(`#checklist-body-${cat.id}`);
+
+                    // Helper to render points
+                    const renderPoints = () => {
+                        cat.points.forEach(point => {
+                            const pointDiv = document.createElement('div');
+                            pointDiv.className = 'inspection-point-display point-pending';
+                            pointDiv.textContent = point.point_number;
+                            pointDiv.dataset.pointId = point.id;
+                            const rect = drawingImage.getBoundingClientRect();
+                            if (drawingImage.naturalWidth > 0 && drawingImage.naturalHeight > 0) {
+                                const scaleX = rect.width / drawingImage.naturalWidth;
+                                const scaleY = rect.height / drawingImage.naturalHeight;
+                                pointDiv.style.left = `${point.pos_x * scaleX}px`;
+                                pointDiv.style.top = `${point.pos_y * scaleY}px`;
+                            } else {
+                                pointDiv.style.left = `${point.pos_x}px`;
+                                pointDiv.style.top = `${point.pos_y}px`;
+                            }
+
+                            drawingContainer.appendChild(pointDiv);
+
+                            const row = document.createElement('tr');
+                            row.id = `row-point-${point.id}`;
+                            let valueInputHtml = '';
+                            if (cat.category_name.includes('ขนาด') || point.method === 'Measurement') {
+                                valueInputHtml = `<input type="number" step="any" class="form-control input-measurement w-auto" placeholder="${point.standard_value} ± ${point.tolerance || 0}">`;
+                            }
+
+                            row.innerHTML = `
+                            <td style="width: 50px;"><span class="badge bg-secondary text-white fs-3">${point.point_number}</span></td>
+                            <td>
+                                <div class="fw-bold">${point.name || 'N/A'}</div>
+                                <div class="text-muted small">${point.standard_value || ''} ${point.unit || ''}</div>
+                            </td>
+                            <td>${valueInputHtml}</td>
+                            <td class="text-lg-end">
+                                <div class="btn-group btn-group-lg-mobile w-100 w-lg-auto">
+                                    <button class="btn btn-outline-success" data-result="PASS">PASS</button>
+                                    <button class="btn btn-outline-danger" data-result="FAIL">FAIL</button>
+                                </div>
+                            </td>
+                        `;
+                            checklistBody.appendChild(row);
+                        });
+                    };
+
+                    drawingImage.onload = renderPoints;
+                    if (drawingImage.complete && drawingImage.naturalWidth > 0) renderPoints();
+                });
+
+                // Add Sticky Footer with Save Button
+                stickyFooterContainer.innerHTML = ''; // Clear existing
+                const stickyDiv = document.createElement('div');
+                stickyDiv.className = 'sticky-bottom-actions';
+
+                const saveBtn = document.createElement('button');
+                saveBtn.id = 'btn-confirm-save';
+                saveBtn.className = 'btn btn-primary w-100 p-3 shadow-lg';
+                saveBtn.innerHTML = '<span class="fs-2">ยืนยันการบันทึก (Save Changes)</span>';
+                saveBtn.onclick = handleSaveAll;
+
+                const container = document.createElement('div');
+                container.className = 'container-xl';
+                container.appendChild(saveBtn);
+                stickyDiv.appendChild(container);
+
+                stickyFooterContainer.appendChild(stickyDiv);
+            }
+
+            categoriesContainer.addEventListener('click', async (e) => {
+                if (e.target.tagName !== 'BUTTON' || !e.target.dataset.result) return;
+
+                const button = e.target;
+                const row = button.closest('tr');
+                const pointId = row.id.replace('row-point-', '');
+
+                let mo_id;
+                try {
+                    if (!currentInspectionData.mo_id_cache) {
+                        const moRes = await fetchWithAuth(`/api/manufacturing-orders/mo/${moNumber}`);
+                        if (!moRes.ok) throw new Error("Could not find MO ID");
+                        const moData = await moRes.json();
+                        currentInspectionData.mo_id_cache = moData.id;
+                    }
+                    mo_id = currentInspectionData.mo_id_cache;
+                } catch (error) {
+                    alert('เกิดข้อผิดพลาดในการค้นหา MO ID: ' + error.message);
+                    return;
+                }
+
+                const logData = {
+                    mo_id: mo_id,
+                    inspection_point_id: pointId,
+                    inspection_result: button.dataset.result,
+                    measured_value: row.querySelector('input[type="number"]')?.value || null,
+                    notes: button.dataset.result === 'FAIL' ? prompt('กรุณาใส่หมายเหตุสำหรับ Defect:') : null,
+                    inspector_id: userId
+                };
+
+                // Store in pending logs, replace if exists
+                const existingIdx = pendingLogs.findIndex(l => l.inspection_point_id === pointId);
+                if (existingIdx >= 0) {
+                    pendingLogs[existingIdx] = logData;
+                } else {
+                    pendingLogs.push(logData);
+                }
+
+                // Update UI visually only
+                row.classList.remove('point-row-pass', 'point-row-fail');
+                row.classList.add(logData.inspection_result === 'PASS' ? 'point-row-pass' : 'point-row-fail');
+
+                const pointDisplay = document.querySelector(`.inspection-point-display[data-point-id='${pointId}']`);
+                if (pointDisplay) {
+                    pointDisplay.classList.remove('point-pending', 'point-pass', 'point-fail');
+                    pointDisplay.classList.add(logData.inspection_result === 'PASS' ? 'point-pass' : 'point-fail');
+                }
+
+                // Active state for button
+                button.closest('.btn-group').querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.style.fontWeight = 'normal';
+                });
+                button.classList.add('active');
+                button.style.fontWeight = 'bold';
+            });
+
+            // Start flow
+            loadSidebar();
+            loadUserInfo();
+            loadStandardOptions();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLC Read/Write Tester</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .table-container { max-height: 25vh; overflow-y: auto; margin-bottom: 1rem; }
+        .form-control, .form-select { margin-bottom: 0.5rem; }
+        #write-feedback { margin-top: 1rem; }
+        .decoded-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid"><span class="navbar-brand mb-0 h1">🔧 PLC Read/Write Tester</span></div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row g-4">
+            <div class="col-md-7">
+                <!-- Decoded Tags Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Decoded Tag Values</h5>
+                            <div id="connection-status"></div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="table table-sm table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Tag Name</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="decoded-tags-table">
+                                    <!-- Decoded data will be populated here by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raw Data Card -->
+                <div class="card">
+                    <div class="card-header"><h5 class="mb-0">Raw Data (Live)</h5></div>
+                    <div class="card-body">
+                        <h6>Holding Registers (Raw Values)</h6>
+                        <div class="table-container">
+                            <table class="table table-sm table-bordered">
+                                <thead><tr><th>Address</th><th>Value</th></tr></thead>
+                                <tbody id="registers-table"></tbody>
+                            </table>
+                        </div>
+                        <h6>Input Coils (X)</h6>
+                        <div class="table-container">
+                            <table class="table table-sm table-bordered">
+                                <thead><tr><th>Address</th><th>Value</th></tr></thead>
+                                <tbody id="coils-x-table"></tbody>
+                            </table>
+                        </div>
+                        <h6>Output Coils (Y)</h6>
+                        <div class="table-container">
+                            <table class="table table-sm table-bordered">
+                                <thead><tr><th>Address</th><th>Value</th></tr></thead>
+                                <tbody id="coils-y-table"></tbody>
+                            </table>
+                        </div>
+                        <h6>Internal Coils (M)</h6>
+                        <div class="table-container">
+                            <table class="table table-sm table-bordered">
+                                <thead><tr><th>Address</th><th>Value</th></tr></thead>
+                                <tbody id="coils-m-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Write Data Card -->
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header"><h5 class="mb-0">Write Data</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="plc-select" class="form-label">Select PLC:</label>
+                            <select id="plc-select" class="form-select"></select>
+                        </div>
+                        <hr>
+
+                        <h6>Write Text String</h6>
+                        <input type="number" id="str-address" class="form-control" placeholder="Start Address (e.g., 41016)">
+                        <input type="text" id="str-value" class="form-control" placeholder="Text to write">
+                        <input type="number" id="str-len" class="form-control" placeholder="Fixed Char Length (e.g., 10)">
+                        <button class="btn btn-info w-100" onclick="writeString()">Write String</button>
+                        <hr>
+                        
+                        <h6>Write Holding Register</h6>
+                        <div class="row">
+                            <div class="col"><input type="number" id="reg-address" class="form-control" placeholder="Address (e.g., 41000)"></div>
+                            <div class="col"><input type="number" id="reg-value" class="form-control" placeholder="Value"></div>
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="writeRegister()">Write Register</button>
+                        
+                        <hr>
+
+                        <h6>Write Coil (Y or M)</h6>
+                        <input type="number" id="coil-address" class="form-control" placeholder="Address (e.g., 10000 for Y0)">
+                        <div class="d-grid gap-2 d-sm-flex">
+                            <button class="btn btn-success w-100" onclick="writeCoil(1)">Set Coil ON</button>
+                            <button class="btn btn-danger w-100" onclick="writeCoil(0)">Set Coil OFF</button>
+                        </div>
+                        
+                        <div id="write-feedback" class="mt-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Element selectors
+    const plcSelect = document.getElementById('plc-select');
+    const connectionStatus = document.getElementById('connection-status');
+    const decodedTagsTable = document.getElementById('decoded-tags-table');
+    const registersTable = document.getElementById('registers-table');
+    const coilsXTable = document.getElementById('coils-x-table');
+    const coilsYTable = document.getElementById('coils-y-table');
+    const coilsMTable = document.getElementById('coils-m-table');
+    const writeFeedback = document.getElementById('write-feedback');
+    
+    // UI Constants
+    const HOLDING_REG_START_UI = 41000;
+    const COIL_X_START_UI = 0;
+    const COIL_Y_START_UI = 10000;
+    const COIL_M_START_UI = 30100;
+
+    let lastReadData = {};
+
+    async function updateUI() {
+        try {
+            const response = await fetch('/api/data');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            lastReadData = await response.json();
+            
+            // Populate PLC selector only once
+            if (plcSelect.options.length === 0 && Object.keys(lastReadData).length > 0) {
+                for (const plcName in lastReadData) { plcSelect.add(new Option(plcName, plcName)); }
+            }
+            
+            const selectedPlcName = plcSelect.value;
+            if (!selectedPlcName) return; 
+            
+            const data = lastReadData[selectedPlcName];
+            if (!data) return;
+
+            // Update Connection Status
+            if (data.is_connected) {
+                connectionStatus.innerHTML = '<span class="badge bg-success">Connected</span>';
+            } else {
+                connectionStatus.innerHTML = `<span class="badge bg-danger">Disconnected</span>`;
+                clearAllTables();
+                return;
+            }
+            
+            // Populate Decoded Tags Table
+            populateDecodedTable(data.decoded_tags);
+
+            // Populate Raw Data Tables
+            populateTable(registersTable, data.raw_holdings, HOLDING_REG_START_UI);
+            populateTable(coilsXTable, data.raw_coils_x, COIL_X_START_UI);
+            populateTable(coilsYTable, data.raw_coils_y, COIL_Y_START_UI);
+            populateTable(coilsMTable, data.raw_coils_m, COIL_M_START_UI);
+
+        } catch (error) {
+            console.error('Failed to fetch data:', error);
+            connectionStatus.innerHTML = `<span class="badge bg-warning text-dark">Error Fetching</span>`;
+            clearAllTables();
+        }
+    }
+    
+    function clearAllTables() {
+        decodedTagsTable.innerHTML = '<tr><td colspan="2">No data</td></tr>';
+        registersTable.innerHTML = ''; 
+        coilsXTable.innerHTML = ''; 
+        coilsYTable.innerHTML = ''; 
+        coilsMTable.innerHTML = ''; 
+    }
+
+    function populateDecodedTable(decodedData) {
+        decodedTagsTable.innerHTML = '';
+        if (decodedData && Object.keys(decodedData).length > 0) {
+            for (const tagName in decodedData) {
+                const value = decodedData[tagName];
+                const row = `<tr>
+                                <td><strong>${tagName}</strong></td>
+                                <td class="decoded-value">${value}</td>
+                             </tr>`;
+                decodedTagsTable.innerHTML += row;
+            }
+        } else {
+            decodedTagsTable.innerHTML = '<tr><td colspan="2">No mapped tags found or no data.</td></tr>';
+        }
+    }
+
+    function populateTable(tableBody, dataArray, startAddress) {
+        tableBody.innerHTML = '';
+        (dataArray || []).forEach((val, index) => {
+            const addr = startAddress + index;
+            tableBody.innerHTML += `<tr><td><strong>${addr}</strong></td><td>${val}</td></tr>`;
+        });
+    }
+
+    // --- Write Functions ---
+    function writeRegister() {
+        const address = document.getElementById('reg-address').value;
+        const value = document.getElementById('reg-value').value;
+        sendWriteCommand(plcSelect.value, address, value, 'register');
+    }
+    
+    function writeCoil(value) {
+        const address = document.getElementById('coil-address').value;
+        sendWriteCommand(plcSelect.value, address, value, 'coil');
+    }
+
+    function writeString() {
+        const plcName = plcSelect.value;
+        const address = document.getElementById('str-address').value;
+        const text = document.getElementById('str-value').value;
+        const length = document.getElementById('str-len').value;
+        
+        if (!plcName || !address || !text || !length) {
+            showFeedback('Please fill all fields for String write.', 'danger');
+            return;
+        }
+
+        showFeedback('Sending string...', 'info');
+        fetch('/api/write_string', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ plc_name: plcName, address: address, text: text, length: length })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                showFeedback(`Successfully wrote string to ${plcName}.`, 'success');
+            } else {
+                showFeedback(`<b>Error:</b> ${result.message}`, 'danger');
+            }
+        })
+        .catch(error => showFeedback(`Failed to send command: ${error}`, 'danger'));
+    }
+
+    async function sendWriteCommand(plcName, address, value, type) {
+        if (!plcName || !address || value === '') {
+            showFeedback('Please fill all fields.', 'danger'); return;
+        }
+        showFeedback('Sending command...', 'info');
+        try {
+            const response = await fetch('/api/write', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ plc_name: plcName, address: address, value: value, type: type })
+            });
+            const result = await response.json();
+            if (result.status === 'success') {
+                showFeedback(`Successfully wrote to ${plcName}.`, 'success');
+            } else {
+                showFeedback(`<b>Error:</b> ${result.message}`, 'danger');
+            }
+        } catch (error) {
+            showFeedback(`Failed to send command: ${error}`, 'danger');
+        }
+    }
+    
+    function showFeedback(message, type) {
+        writeFeedback.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => { writeFeedback.innerHTML = ''; }, 4000);
+    }
+
+    setInterval(updateUI, 2000);
+    window.onload = updateUI;
+</script>
+</body>
+</html>
+

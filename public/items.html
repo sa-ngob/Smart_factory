@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>รายการสินค้า (Item Master) - Smart Factory</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="page">
+      <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+      <div class="page-wrapper">
+        <div class="page-header d-print-none">
+            <div class="container-xl">
+                <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                <div class="row g-2 align-items-center">
+                    <div class="col"><h2 class="page-title">รายการสินค้า (Item Master)</h2></div>
+                    <div class="col-auto ms-auto d-print-none">
+                        <a href="/create-item.html" class="btn btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 5l0 14"></path><path d="M5 12l14 0"></path></svg>
+                            เพิ่มรายการใหม่
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="w-100"><div class="row g-2">
+                            <div class="col"><input type="text" id="search-input" class="form-control" placeholder="ค้นหาตามรหัสหรือชื่อ..."></div>
+                            <div class="col-auto">
+                                <select class="form-select" id="type-filter">
+                                    <option value="">ทุกประเภท</option>
+                                    <option value="finished_good">สินค้าสำเร็จรูป (FG)</option>
+                                    <option value="semi_good">สินค้าระหว่างผลิต (SE)</option>
+                                    <option value="raw_material">วัตถุดิบ (RM)</option>
+                                    <option value="consumable">วัสดุสิ้นเปลือง (CS)</option>
+                                </select>
+                            </div>
+                        </div></div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table">
+                            <thead>
+                                <tr>
+                                    <th>สินค้า</th>
+                                    <th>ลูกค้า</th>
+                                    <th>ประเภท</th>
+                                    <th>สถานะ</th>
+                                    <th class="w-1"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            async function loadSidebar() {
+                try {
+                    const response = await fetchWithAuth('/api/sidebar'); 
+                    const sidebarHtml = await response.text();
+                    document.getElementById('sidebar').innerHTML = sidebarHtml;
+
+                     // Highlight the active menu item
+                    const activeLink = document.querySelector('.navbar-vertical .nav-link[href="/items.html"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                    }
+                } catch (error) {
+                    console.error("Could not load sidebar:", error.message);
+                }
+            }
+
+            async function loadUserInfo() {
+                try {
+                    const response = await fetchWithAuth('/api/user-info');
+                    const data = await response.json();
+                    if (data.success && data.displayName) {
+                        document.getElementById('display-username').textContent = data.displayName;
+                    }
+                } catch (error) {
+                    console.error("Could not load user info:", error.message);
+                }
+            }
+
+            async function initializeItemMasterPage() {
+                const tbody = document.getElementById('items-table-body');
+                const searchInput = document.getElementById('search-input');
+                const typeFilter = document.getElementById('type-filter');
+                let allItems = [];
+
+                function renderTable(items) {
+                    tbody.innerHTML = '';
+                    if (!items || items.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center">ไม่พบข้อมูล</td></tr>';
+                        return;
+                    }
+                    items.forEach(item => {
+                        const statusBadge = item.status === 'active' 
+                            ? `<span class="badge bg-success-lt">Active</span>` 
+                            : `<span class="badge bg-danger-lt">Inactive</span>`;
+                        const typeMap = {
+                            'finished_good': 'สินค้าสำเร็จรูป', 'semi_good': 'ระหว่างผลิต',
+                            'raw_material': 'วัตถุดิบ', 'consumable': 'วัสดุสิ้นเปลือง'
+                        };
+
+                        const row = `
+                            <tr>
+                                <td>
+                                    <div class="d-flex py-1 align-items-center">
+                                        <span class="avatar me-2" style="background-image: url(${item.image_path || '/static/no-image.png'})"></span>
+                                        <div class="flex-fill">
+                                            <div class="font-weight-medium">${item.item_name}</div>
+                                            <div class="text-muted">${item.item_code}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${item.customer_name || '<span class="text-muted">-</span>'}</td>
+                                <td>${typeMap[item.item_type] || item.item_type}</td>
+                                <td>${statusBadge}</td>
+                                <td class="text-end">
+                                    <a href="/edit-item.html?id=${item.id}" class="btn btn-sm btn-outline-primary">แก้ไข</a>
+                                </td>
+                            </tr>`;
+                        tbody.insertAdjacentHTML('beforeend', row);
+                    });
+                }
+
+                function filterAndRender() {
+                    const searchTerm = searchInput.value.toLowerCase();
+                    const typeValue = typeFilter.value;
+                    const filteredItems = allItems.filter(item => {
+                        const matchesSearch = searchTerm === '' || 
+                                              item.item_name.toLowerCase().includes(searchTerm) ||
+                                              item.item_code.toLowerCase().includes(searchTerm);
+                        const matchesType = typeValue === '' || item.item_type === typeValue;
+                        return matchesSearch && matchesType;
+                    });
+                    renderTable(filteredItems);
+                }
+                
+                searchInput.addEventListener('input', filterAndRender);
+                typeFilter.addEventListener('change', filterAndRender);
+
+                try {
+                    const response = await fetchWithAuth('/api/items');
+                    const data = await response.json();
+                    allItems = data.data;
+                    renderTable(allItems);
+                } catch (error) {
+                    console.error('Failed to load items:', error);
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">ไม่สามารถโหลดข้อมูลได้</td></tr>';
+                }
+            }
+
+            // --- เรียกใช้งานฟังก์ชันทั้งหมด ---
+            loadSidebar();
+            loadUserInfo();
+            initializeItemMasterPage();
+        });
+    </script>
+</body>
+</html>

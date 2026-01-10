@@ -1,0 +1,807 @@
+// database.js - dual-mode DB layer: Postgres when DATABASE_URL is set, otherwise SQLite (local dev)
+require('dotenv').config();
+const bcrypt = require('bcrypt');
+const fs = require('fs');
+const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
+const util = require('util');
+
+// Force Postgres to use Thai Time if using pg
+process.env.PGTZ = 'Asia/Bangkok';
+
+
+// Decide DB backend
+if (process.env.DATABASE_URL && process.env.DATABASE_URL !== "YOUR_POSTGRES_URL_HERE") {
+    console.log('Found DATABASE_URL. Attempting to connect to PostgreSQL...');
+    console.log('If you want to use local SQLite, remove or comment out DATABASE_URL from your .env file.');
+
+    // Postgres block (kept as-is)
+    const { Pool } = require('pg');
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl:false
+    });
+
+    pool.on('connect', () => console.log('✅ Connected to the PostgreSQL database.'));
+    pool.on('error', (err) => { console.error('Unexpected error on idle client', err); process.exit(-1); });
+
+    const db = {
+        pool: pool, // Expose pool for transactions
+        query: (text, params) => pool.query(text, params),
+        allAsync: async (text, params) => (await pool.query(text, params)).rows,
+        getAsync: async (text, params) => (await pool.query(text, params)).rows[0],
+        runAsync: async (text, params) => ({ rowCount: (await pool.query(text, params)).rowCount }),
+        all: (text, params, cb) => pool.query(text, params, (e, r) => cb && cb(e, r ? r.rows : null)),
+        get: (text, params, cb) => pool.query(text, params, (e, r) => cb && cb(e, r ? r.rows[0] : null)),
+        run: (text, params, cb) => pool.query(text, params, (e, r) => cb && cb(e, { rowCount: r ? r.rowCount : 0 })),
+    };
+
+    async function createTables() {
+        console.log('Initializing database tables (Postgres)...');
+        const client = await pool.connect();
+        try {
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    full_name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    role VARCHAR(50) NOT NULL,
+                    status VARCHAR(50) DEFAULT 'active'
+                );
+            `);
+            await client.query(`CREATE TABLE IF NOT EXISTS roles ( id SERIAL PRIMARY KEY, name VARCHAR(50) UNIQUE NOT NULL );`);
+            await client.query(`CREATE TABLE IF NOT EXISTS pages ( id SERIAL PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL, url VARCHAR(255) UNIQUE NOT NULL );`);
+            await client.query(`CREATE TABLE IF NOT EXISTS role_pages ( role_id INTEGER, page_id INTEGER, PRIMARY KEY (role_id, page_id), FOREIGN KEY (role_id) REFERENCES roles(id), FOREIGN KEY (page_id) REFERENCES pages(id) );`);
+
+            // Seed Roles
+            await client.query(`INSERT INTO roles (name) VALUES ('admin'), ('qc'), ('user') ON CONFLICT (name) DO NOTHING;`);
+
+            // Seed Pages & Permissions
+            const allPages = [
+                // Dashboards
+                { name: 'Dashboard', url: '/dashboard.html' },
+                { name: 'ภาพรวมโรงงาน', url: '/overview-dashboard.html' },
+                { name: 'การผลิต (Real-time)', url: '/production-dashboard.html' },
+                { name: 'การขายและการตลาด', url: '/sales-dashboard.html' },
+                { name: 'คลังสินค้า', url: '/inventory-dashboard.html' },
+                { name: 'Workflow การขาย', url: '/workflow-dashboard.html' },
+                { name: 'OEE Dashboard', url: '/oee_dashboard.html' },
+                { name: 'Downtime Log', url: '/downtime-log.html' },
+                { name: 'วิเคราะห์ใบสั่งผลิต', url: '/mo_dashboard.html' },
+                { name: 'Operator Interface', url: '/operator.html' },
+
+                // Sales & Production
+                { name: 'ใบสั่งขาย (SO)', url: '/sales-orders.html' },
+                { name: 'ใบสั่งผลิต (MO)', url: '/manufacturing-orders.html' },
+                { name: 'Production Schedule', url: '/production-schedule.html' },
+
+                // Quality
+                { name: 'ระบบควบคุมคุณภาพ', url: '/Quality Management System.html' },
+                { name: 'รายการมาตรฐาน QC', url: '/quality-standards-list.html' },
+                { name: 'แดชบอร์ดคุณภาพ', url: '/quality-dashboard.html' },
+                { name: 'บันทึกผลตรวจสอบ', url: '/quality-inspection.html' },
+
+                // Master Data & Planning
+                { name: 'จัดการสต็อก', url: '/inventory.html' },
+                { name: 'จัดการข้อมูลสินค้า', url: '/items.html' },
+                { name: 'จัดการ BOM', url: '/boms.html' },
+                { name: 'จัดการประวัติแม่พิมพ์', url: '/molds.html' },
+                { name: 'จัดการเครื่องจักร', url: '/machines.html' },
+                { name: 'Projects', url: '/projects.html' },
+
+                // Financial
+                { name: 'ใบสั่งซื้อ (PO)', url: '/purchase-orders.html' },
+                { name: 'ใบส่งของ (DO)', url: '/delivery-orders.html' },
+                { name: 'ใบแจ้งหนี้ (Invoice)', url: '/invoices.html' },
+                { name: 'ใบวางบิล', url: '/billing-notes.html' },
+                { name: 'ใบเสร็จรับเงิน', url: '/receipts.html' },
+
+                // System
+                { name: 'จัดการลูกค้า', url: '/customers.html' },
+                { name: 'จัดการผู้ขาย', url: '/vendors.html' },
+                { name: 'จัดการผู้ใช้', url: '/users.html' },
+                { name: 'จัดการ Roles', url: '/manage_roles.html' },
+                { name: 'จัดการสิทธิ์', url: '/manage_permissions.html' },
+
+                // Sub-pages (keep existing ones)
+                { name: 'สร้างแม่พิมพ์ใหม่', url: '/create-mold.html' },
+                { name: 'แก้ไขข้อมูลแม่พิมพ์', url: '/edit-mold.html' },
+                { name: 'รายละเอียดแม่พิมพ์', url: '/mold-details.html' },
+                { name: 'จัดการ Part List', url: '/manage-parts.html' },
+                { name: 'สร้าง BOM ใหม่', url: '/create-bom.html' },
+                { name: 'แก้ไข BOM', url: '/edit-bom.html' },
+                { name: 'รายละเอียด BOM', url: '/bom-details.html' },
+                { name: 'สร้างสินค้าใหม่', url: '/create-item.html' },
+                { name: 'แก้ไขข้อมูลสินค้า', url: '/edit-item.html' },
+                { name: 'รายละเอียดสินค้า', url: '/item-details.html' },
+                { name: 'เพิ่มผู้ใช้', url: '/add-user.html' },
+                { name: 'แก้ไขผู้ใช้', url: '/edit-user.html' }
+            ];
+
+            for (const p of allPages) {
+                // Insert page if not exists
+                const pageRes = await client.query(`INSERT INTO pages (name, url) VALUES ($1, $2) ON CONFLICT (url) DO UPDATE SET name=$1 RETURNING id`, [p.name, p.url]);
+                const pageId = pageRes.rows[0].id;
+
+                // Assign all pages to admin by default
+                const adminRoleRes = await client.query(`SELECT id FROM roles WHERE name = 'admin'`);
+                if (adminRoleRes.rows.length > 0) {
+                    await client.query(`INSERT INTO role_pages (role_id, page_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [adminRoleRes.rows[0].id, pageId]);
+                }
+            }
+
+            // Seed Admin User
+            const adminCheck = await client.query('SELECT COUNT(*) FROM users');
+            if (parseInt(adminCheck.rows[0].count) === 0) {
+                const adminPass = await bcrypt.hash('admin', 10);
+                await client.query('INSERT INTO users (full_name, email, password, role) VALUES ($1, $2, $3, $4)', ['Administrator', 'admin@local', adminPass, 'admin']);
+                console.log('✅ Admin user created (Postgres): admin@local / admin');
+            }
+
+            // Other Tables
+            await client.query(`CREATE TABLE IF NOT EXISTS entities ( id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, tax_id VARCHAR(50), address TEXT, branch_code VARCHAR(50), branch_name VARCHAR(255), contact_person VARCHAR(255), email VARCHAR(255), phone VARCHAR(50) );`);
+            // Add columns is_customer, is_vendor
+            const entityCols = await client.query("SELECT column_name FROM information_schema.columns WHERE table_name='entities'");
+            const colNames = entityCols.rows.map(r => r.column_name);
+            if (!colNames.includes('is_customer')) {
+                await client.query('ALTER TABLE entities ADD COLUMN is_customer INTEGER DEFAULT 0');
+            }
+            if (!colNames.includes('is_vendor')) {
+                await client.query('ALTER TABLE entities ADD COLUMN is_vendor INTEGER DEFAULT 0');
+            }
+            if (!colNames.includes('entity_code')) {
+                await client.query('ALTER TABLE entities ADD COLUMN entity_code VARCHAR(50) UNIQUE');
+            }
+
+            await client.query(`CREATE TABLE IF NOT EXISTS entity_roles ( entity_id INTEGER NOT NULL, role_name VARCHAR(50) NOT NULL, PRIMARY KEY (entity_id, role_name), FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE );`);
+
+            await client.query(`CREATE TABLE IF NOT EXISTS items ( 
+                id SERIAL PRIMARY KEY, 
+                item_code VARCHAR(50) UNIQUE NOT NULL, 
+                item_name VARCHAR(255) NOT NULL, 
+                item_type VARCHAR(50), 
+                uom VARCHAR(20), 
+                stock_quantity INTEGER DEFAULT 0, 
+                status VARCHAR(20) DEFAULT 'active', 
+                cycle_time_sec REAL, 
+                material_dry_temp REAL,
+                customer_id INTEGER,
+                model VARCHAR(255),
+                material_name VARCHAR(255),
+                grade VARCHAR(100),
+                colour VARCHAR(100),
+                part_weight_gram REAL,
+                image_path TEXT
+            );`);
+
+            await client.query(`CREATE TABLE IF NOT EXISTS item_vendors (
+                item_id INTEGER NOT NULL,
+                vendor_id INTEGER NOT NULL,
+                PRIMARY KEY (item_id, vendor_id)
+            );`);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS molds (
+                    id SERIAL PRIMARY KEY,
+                    mold_code VARCHAR(50) UNIQUE NOT NULL,
+                    mold_name VARCHAR(255) NOT NULL,
+                    customer_id INTEGER,
+                    received_date VARCHAR(50),
+                    storage_location VARCHAR(100),
+                    mold_type VARCHAR(50),
+                    runner_system VARCHAR(50),
+                    gate_type VARCHAR(50),
+                    size_w REAL,
+                    size_l REAL,
+                    size_h REAL,
+                    weight REAL,
+                    cavity INTEGER,
+                    part_weight_gram REAL,
+                    runner_weight_gram REAL,
+                    cycle_time_sec REAL,
+                    shot_counter INTEGER DEFAULT 0,
+                    status VARCHAR(20) DEFAULT 'active',
+                    core_image_path TEXT,
+                    cavity_image_path TEXT,
+                    part_image_path TEXT,
+                    notes TEXT,
+                    FOREIGN KEY (customer_id) REFERENCES entities(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS mold_parts (
+                    id SERIAL PRIMARY KEY,
+                    mold_id INTEGER NOT NULL,
+                    part_number VARCHAR(50) NOT NULL,
+                    part_name VARCHAR(255) NOT NULL,
+                    quantity INTEGER DEFAULT 1,
+                    material VARCHAR(255),
+                    notes TEXT,
+                    FOREIGN KEY (mold_id) REFERENCES molds(id) ON DELETE CASCADE
+                );
+            `);
+            // (Skipping detailed alter table checks for brevity unless needed)
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS boms (
+                    id SERIAL PRIMARY KEY,
+                    product_part_number VARCHAR(50) NOT NULL,
+                    product_name VARCHAR(255),
+                    mold_id INTEGER,
+                    creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    version INTEGER DEFAULT 1,
+                    is_active INTEGER DEFAULT 1,
+                    FOREIGN KEY (mold_id) REFERENCES molds(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS bom_items (
+                    id SERIAL PRIMARY KEY,
+                    bom_id INTEGER NOT NULL,
+                    material_code VARCHAR(50) NOT NULL,
+                    material_name VARCHAR(255),
+                    mixing_ratio REAL,
+                    unit VARCHAR(20),
+                    FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE CASCADE
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS inventory_transactions (
+                    id SERIAL PRIMARY KEY,
+                    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    item_code VARCHAR(50) NOT NULL,
+                    transaction_type VARCHAR(50) NOT NULL, -- 'IN', 'OUT', 'ADJUST'
+                    quantity_change INTEGER NOT NULL,
+                    new_quantity INTEGER,
+                    reference_type VARCHAR(50), -- 'MO', 'PO', 'manual'
+                    reference_id VARCHAR(50),
+                    notes TEXT,
+                    created_by VARCHAR(100)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS machines (
+                    id SERIAL PRIMARY KEY,
+                    machine_code VARCHAR(50) UNIQUE NOT NULL,
+                    machine_name VARCHAR(255) NOT NULL,
+                    machine_type VARCHAR(50),
+                    status VARCHAR(20) DEFAULT 'idle',
+                    cycle_time_sec REAL,
+                    material_dry_temp REAL,
+                    notes TEXT
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS defect_codes (
+                    id SERIAL PRIMARY KEY,
+                    code VARCHAR(50) UNIQUE NOT NULL,
+                    description TEXT NOT NULL
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS machine_data (
+                    machine_id VARCHAR(50) PRIMARY KEY,
+                    timestamp TIMESTAMP NOT NULL,
+                    mold_count INTEGER,
+                    machine_status INTEGER,
+                    mold_temp_core REAL,
+                    mold_temp_cavity REAL,
+                    mo_number VARCHAR(50),
+                    cycle_time_sec REAL,
+                    material_dry_temp REAL,
+                    item_name VARCHAR(255)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS downtime_reasons (
+                    id SERIAL PRIMARY KEY,
+                    reason_code VARCHAR(50) UNIQUE NOT NULL,
+                    description TEXT NOT NULL,
+                    category VARCHAR(50)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS machine_status_logs (
+                    id SERIAL PRIMARY KEY,
+                    machine_id VARCHAR(50) NOT NULL,
+                    status INTEGER NOT NULL,
+                    start_time TIMESTAMP NOT NULL,
+                    end_time TIMESTAMP,
+                    duration_sec INTEGER,
+                    reason_id INTEGER,
+                    notes TEXT,
+                    FOREIGN KEY (machine_id) REFERENCES machines(machine_code),
+                    FOREIGN KEY (reason_id) REFERENCES downtime_reasons(id)
+                );
+            `);
+
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_status_logs_machine_time ON machine_status_logs (machine_id, start_time);`);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS sales_orders (
+                    id SERIAL PRIMARY KEY,
+                    so_number VARCHAR(50) UNIQUE NOT NULL,
+                    customer_po_number VARCHAR(50),
+                    customer_id INTEGER,
+                    order_date TIMESTAMP,
+                    due_date TIMESTAMP,
+                    total_amount NUMERIC(10, 2),
+                    status VARCHAR(20) DEFAULT 'draft', -- draft, confirmed, in_production, shipped, closed, cancelled
+                    created_by INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (customer_id) REFERENCES entities(id),
+                    FOREIGN KEY (created_by) REFERENCES users(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS sales_order_items (
+                    id SERIAL PRIMARY KEY,
+                    so_id INTEGER NOT NULL,
+                    item_code VARCHAR(50),
+                    quantity INTEGER,
+                    unit_price NUMERIC(10, 2),
+                    total_price NUMERIC(10, 2),
+                    FOREIGN KEY (so_id) REFERENCES sales_orders(id) ON DELETE CASCADE
+                    -- FOREIGN KEY (item_code) REFERENCES items(item_code) -- Optional, strict integrity
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS manufacturing_orders (
+                    id SERIAL PRIMARY KEY,
+                    mo_number VARCHAR(50) UNIQUE NOT NULL,
+                    so_id INTEGER,
+                    item_code VARCHAR(50),
+                    quantity_to_produce INTEGER,
+                    bom_id INTEGER,
+                    due_date TIMESTAMP,
+                    status VARCHAR(20) DEFAULT 'pending', -- pending, in_progress, completed, cancelled
+                    planned_start_time TIMESTAMP,
+                    planned_end_time TIMESTAMP,
+                    actual_start_time TIMESTAMP,
+                    actual_end_time TIMESTAMP,
+                    machine_id INTEGER, -- Link to machines table (optional if machines use ID or code)
+                    adjustment_reason TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (so_id) REFERENCES sales_orders(id),
+                    FOREIGN KEY (bom_id) REFERENCES boms(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS production_records (
+                    id SERIAL PRIMARY KEY,
+                    mo_id INTEGER NOT NULL,
+                    record_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    good_quantity INTEGER DEFAULT 0,
+                    total_scrap_quantity INTEGER DEFAULT 0,
+                    operator_name VARCHAR(100),
+                    note TEXT,
+                    FOREIGN KEY (mo_id) REFERENCES manufacturing_orders(id) ON DELETE CASCADE
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS scrap_records (
+                    id SERIAL PRIMARY KEY,
+                    record_id INTEGER NOT NULL,
+                    defect_code_id INTEGER NOT NULL,
+                    quantity INTEGER DEFAULT 0,
+                    FOREIGN KEY (record_id) REFERENCES production_records(id) ON DELETE CASCADE,
+                    FOREIGN KEY (defect_code_id) REFERENCES defect_codes(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS purchase_orders (
+                    id SERIAL PRIMARY KEY,
+                    po_number VARCHAR(50) UNIQUE NOT NULL,
+                    vendor_id INTEGER,
+                    order_date TIMESTAMP,
+                    total_amount NUMERIC(10, 2),
+                    quotation_ref VARCHAR(50),
+                    created_by INTEGER,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    expect_delivery_date TIMESTAMP,
+                    FOREIGN KEY (vendor_id) REFERENCES entities(id),
+                    FOREIGN KEY (created_by) REFERENCES users(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS purchase_order_items (
+                    id SERIAL PRIMARY KEY,
+                    po_id INTEGER NOT NULL,
+                    item_code VARCHAR(50),
+                    item_name VARCHAR(255),
+                    quantity INTEGER,
+                    unit_price NUMERIC(10, 2),
+                    total_price NUMERIC(10, 2),
+                    FOREIGN KEY (po_id) REFERENCES purchase_orders(id) ON DELETE CASCADE
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS delivery_orders (
+                    id SERIAL PRIMARY KEY,
+                    do_number VARCHAR(50) UNIQUE NOT NULL,
+                    customer_id INTEGER,
+                    shipping_date TIMESTAMP,
+                    shipping_address TEXT,
+                    status VARCHAR(20) DEFAULT 'shipped',
+                    created_by INTEGER,
+                    FOREIGN KEY (customer_id) REFERENCES entities(id),
+                    FOREIGN KEY (created_by) REFERENCES users(id)
+                );
+            `);
+
+            // Check for missing shipping_address column in existing table
+            try {
+                await client.query('ALTER TABLE delivery_orders ADD COLUMN IF NOT EXISTS shipping_address TEXT');
+            } catch (e) { /* ignore if already exists or not supported */ }
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS delivery_order_items (
+                    id SERIAL PRIMARY KEY,
+                    do_id INTEGER NOT NULL,
+                    so_item_id INTEGER,
+                    item_code VARCHAR(50),
+                    quantity_shipped INTEGER,
+                    FOREIGN KEY (do_id) REFERENCES delivery_orders(id) ON DELETE CASCADE
+                );
+            `);
+
+            try {
+                await client.query('ALTER TABLE delivery_order_items ADD COLUMN IF NOT EXISTS item_code VARCHAR(50)');
+            } catch (e) { /* ignore */ }
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS invoices (
+                    id SERIAL PRIMARY KEY,
+                    invoice_number VARCHAR(50) UNIQUE NOT NULL,
+                    customer_id INTEGER,
+                    customer_po_number VARCHAR(50),
+                    issue_date TIMESTAMP,
+                    due_date TIMESTAMP,
+                    sub_total NUMERIC(10, 2),
+                    tax_amount NUMERIC(10, 2),
+                    grand_total NUMERIC(10, 2),
+                    status VARCHAR(20) DEFAULT 'pending_issue',
+                    created_by INTEGER,
+                    FOREIGN KEY (customer_id) REFERENCES entities(id),
+                    FOREIGN KEY (created_by) REFERENCES users(id)
+                );
+            `);
+
+            // Ensure customer_po_number column exists (migration for existing tables)
+            try {
+                await client.query('ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_po_number VARCHAR(50)');
+                await client.query('ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sub_total NUMERIC(10, 2)');
+                await client.query('ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_amount NUMERIC(10, 2)');
+                await client.query('ALTER TABLE invoices ADD COLUMN IF NOT EXISTS grand_total NUMERIC(10, 2)');
+                await client.query('ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_by INTEGER');
+            } catch (e) { /* ignore */ }
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS invoice_items (
+                    id SERIAL PRIMARY KEY,
+                    invoice_id INTEGER NOT NULL,
+                    item_code VARCHAR(50),
+                    description VARCHAR(255),
+                    quantity INTEGER,
+                    unit_price NUMERIC(10, 2),
+                    total_price NUMERIC(10, 2),
+                    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS invoice_delivery_orders (
+                    invoice_id INTEGER NOT NULL,
+                    do_id INTEGER NOT NULL,
+                    PRIMARY KEY (invoice_id, do_id),
+                    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
+                    FOREIGN KEY (do_id) REFERENCES delivery_orders(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS billing_notes (
+                    id SERIAL PRIMARY KEY,
+                    bn_number VARCHAR(50) UNIQUE NOT NULL,
+                    customer_id INTEGER,
+                    issue_date TIMESTAMP,
+                    due_date TIMESTAMP,
+                    payment_terms VARCHAR(100),
+                    total_amount NUMERIC(10, 2),
+                    remark TEXT,
+                    status VARCHAR(20) DEFAULT 'billed',
+                    created_by INTEGER,
+                    FOREIGN KEY (customer_id) REFERENCES entities(id),
+                    FOREIGN KEY (created_by) REFERENCES users(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS billing_note_invoices (
+                    billing_note_id INTEGER NOT NULL,
+                    invoice_id INTEGER NOT NULL,
+                    PRIMARY KEY (billing_note_id, invoice_id),
+                    FOREIGN KEY (billing_note_id) REFERENCES billing_notes(id) ON DELETE CASCADE,
+                    FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS receipts (
+                    id SERIAL PRIMARY KEY,
+                    receipt_number VARCHAR(50) UNIQUE NOT NULL,
+                    customer_id INTEGER,
+                    payment_date TIMESTAMP,
+                    payment_method VARCHAR(50),
+                    total_amount_paid NUMERIC(10, 2),
+                    notes TEXT,
+                    status VARCHAR(20) DEFAULT 'pending_confirmation',
+                    created_by INTEGER,
+                    FOREIGN KEY (customer_id) REFERENCES entities(id),
+                    FOREIGN KEY (created_by) REFERENCES users(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS receipt_billing_notes (
+                    receipt_id INTEGER NOT NULL,
+                    billing_note_id INTEGER NOT NULL,
+                    PRIMARY KEY (receipt_id, billing_note_id),
+                    FOREIGN KEY (receipt_id) REFERENCES receipts(id) ON DELETE CASCADE,
+                    FOREIGN KEY (billing_note_id) REFERENCES billing_notes(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS product_standards (
+                    id SERIAL PRIMARY KEY,
+                    product_id INTEGER NOT NULL,
+                    standard_name VARCHAR(255) NOT NULL,
+                    version INTEGER DEFAULT 1,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (product_id) REFERENCES items(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS standard_categories (
+                    id SERIAL PRIMARY KEY,
+                    product_standard_id INTEGER NOT NULL,
+                    category_name VARCHAR(255) NOT NULL,
+                    drawing_image_path TEXT,
+                    FOREIGN KEY (product_standard_id) REFERENCES product_standards(id) ON DELETE CASCADE
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS inspection_points (
+                    id SERIAL PRIMARY KEY,
+                    standard_category_id INTEGER NOT NULL,
+                    point_number INTEGER,
+                    pos_x REAL,
+                    pos_y REAL,
+                    name VARCHAR(255),
+                    method VARCHAR(100),
+                    standard_value VARCHAR(100),
+                    tolerance VARCHAR(100),
+                    upper_limit VARCHAR(100),
+                    lower_limit VARCHAR(100),
+                    unit VARCHAR(50),
+                    tool_used VARCHAR(255),
+                    FOREIGN KEY (standard_category_id) REFERENCES standard_categories(id) ON DELETE CASCADE
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS inspection_logs (
+                    id SERIAL PRIMARY KEY,
+                    production_order_id INTEGER NOT NULL,
+                    inspection_point_id INTEGER NOT NULL,
+                    inspection_result VARCHAR(50), -- 'PASS', 'FAIL'
+                    measured_value VARCHAR(100),
+                    notes TEXT,
+                    inspector_id INTEGER,
+                    inspected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (production_order_id) REFERENCES manufacturing_orders(id),
+                    FOREIGN KEY (inspection_point_id) REFERENCES inspection_points(id),
+                    FOREIGN KEY (inspector_id) REFERENCES users(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS projects (
+                    id SERIAL PRIMARY KEY,
+                    project_name VARCHAR(255) NOT NULL,
+                    project_type VARCHAR(50),
+                    customer_id INTEGER,
+                    model_name VARCHAR(255),
+                    part_name VARCHAR(255),
+                    part_code VARCHAR(100),
+                    start_date TIMESTAMP,
+                    target_date TIMESTAMP,
+                    actual_finish_date TIMESTAMP,
+                    status VARCHAR(50) DEFAULT 'In Process',
+                    progress INTEGER DEFAULT 0,
+                    part_image_path TEXT,
+                    drawing_path TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (customer_id) REFERENCES entities(id)
+                );
+            `);
+
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS project_tasks (
+                    id SERIAL PRIMARY KEY,
+                    project_id INTEGER NOT NULL,
+                    task_name VARCHAR(255) NOT NULL,
+                    start_date TIMESTAMP,
+                    end_date TIMESTAMP,
+                    status VARCHAR(50) DEFAULT 'pending',
+                    progress INTEGER DEFAULT 0,
+                    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+                );
+            `);
+
+            await client.query('COMMIT');
+            console.log('All tables initialized successfully.');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            console.error('Error creating tables:', e);
+        } finally {
+            client.release();
+        }
+    }
+
+    // run table creation
+    createTables();
+    module.exports = db;
+
+} else {
+    console.log('DATABASE_URL not found or is a placeholder. Falling back to SQLite for local development.');
+
+    // SQLite fallback for local development
+    const DB_PATH = process.env.DB_PATH || './smart_factory.db';
+    const dbDir = path.dirname(DB_PATH);
+    if (dbDir && dbDir !== '.' && !fs.existsSync(dbDir)) {
+        try { fs.mkdirSync(dbDir, { recursive: true }); } catch (e) { /* ignore */ }
+    }
+
+    const dbInstance = new sqlite3.Database(DB_PATH, (err) => {
+        if (err) {
+            console.error('Error opening SQLite database', err.message);
+        } else {
+            console.log('✅ Connected to the SQLite database.');
+            dbInstance.run('PRAGMA journal_mode = WAL;');
+            createTables();
+        }
+    });
+
+    dbInstance.allAsync = util.promisify(dbInstance.all.bind(dbInstance));
+    dbInstance.getAsync = util.promisify(dbInstance.get.bind(dbInstance));
+    dbInstance.runAsync = util.promisify(dbInstance.run.bind(dbInstance));
+
+    function createTables() {
+        dbInstance.serialize(() => {
+            console.log('Initializing database tables (SQLite)...');
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS users ( id INTEGER PRIMARY KEY AUTOINCREMENT, fullName TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT DEFAULT 'active' )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS roles ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS pages ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, url TEXT UNIQUE NOT NULL )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS role_pages ( role_id INTEGER, page_id INTEGER, PRIMARY KEY (role_id, page_id), FOREIGN KEY (role_id) REFERENCES roles(id), FOREIGN KEY (page_id) REFERENCES pages(id) )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS entities ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, tax_id TEXT, address TEXT, branch_code TEXT, branch_name TEXT, contact_person TEXT, email TEXT, phone TEXT )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS entity_roles ( entity_id INTEGER NOT NULL, role_name TEXT NOT NULL, PRIMARY KEY (entity_id, role_name), FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS items ( id INTEGER PRIMARY KEY AUTOINCREMENT, item_code TEXT UNIQUE NOT NULL, item_name TEXT NOT NULL, item_type TEXT, uom TEXT, stock_quantity INTEGER DEFAULT 0, status TEXT, cycle_time_sec REAL, material_dry_temp REAL )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS molds ( id INTEGER PRIMARY KEY AUTOINCREMENT, mold_code TEXT UNIQUE NOT NULL, mold_name TEXT NOT NULL, customer_id INTEGER, received_date TEXT, storage_location TEXT, mold_type TEXT, runner_system TEXT, gate_type TEXT, size_w REAL, size_l REAL, size_h REAL, weight REAL, cavity INTEGER, part_weight_gram REAL, runner_weight_gram REAL, cycle_time_sec REAL, shot_counter INTEGER DEFAULT 0, status TEXT DEFAULT 'active', core_image_path TEXT, cavity_image_path TEXT, part_image_path TEXT, FOREIGN KEY (customer_id) REFERENCES entities(id) )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS mold_parts ( id INTEGER PRIMARY KEY AUTOINCREMENT, mold_id INTEGER NOT NULL, part_number TEXT NOT NULL, part_name TEXT NOT NULL, quantity INTEGER DEFAULT 1, material TEXT, notes TEXT, FOREIGN KEY (mold_id) REFERENCES molds(id) ON DELETE CASCADE )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS machines ( id INTEGER PRIMARY KEY AUTOINCREMENT, machine_code TEXT UNIQUE NOT NULL, machine_name TEXT NOT NULL, status TEXT DEFAULT 'idle', cycle_time_sec REAL, material_dry_temp REAL )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS defect_codes ( id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, description TEXT NOT NULL )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS machine_data ( machine_id TEXT PRIMARY KEY, timestamp DATETIME NOT NULL, mold_count INTEGER, machine_status INTEGER, mold_temp_core REAL, mold_temp_cavity REAL, mo_number TEXT, cycle_time_sec REAL, material_dry_temp REAL, item_name TEXT )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS downtime_reasons ( id INTEGER PRIMARY KEY AUTOINCREMENT, reason_code TEXT UNIQUE NOT NULL, description TEXT NOT NULL, category TEXT CHECK(category IN ('planned', 'unplanned', 'setup')) )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS machine_status_logs ( id INTEGER PRIMARY KEY AUTOINCREMENT, machine_id TEXT NOT NULL, status INTEGER NOT NULL, start_time TEXT NOT NULL, end_time TEXT, duration_sec INTEGER, reason_id INTEGER, notes TEXT, FOREIGN KEY (machine_id) REFERENCES machines (machine_code), FOREIGN KEY (reason_id) REFERENCES downtime_reasons (id) )`);
+            dbInstance.run(`CREATE INDEX IF NOT EXISTS idx_status_logs_machine_time ON machine_status_logs (machine_id, start_time)`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS scrap_records ( id INTEGER PRIMARY KEY AUTOINCREMENT, record_id INTEGER NOT NULL, defect_code_id INTEGER NOT NULL, quantity INTEGER DEFAULT 0, FOREIGN KEY (record_id) REFERENCES production_records(id) ON DELETE CASCADE, FOREIGN KEY (defect_code_id) REFERENCES defect_codes(id) )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS product_standards ( id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, standard_name TEXT NOT NULL, version INTEGER DEFAULT 1, is_active INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (product_id) REFERENCES items(id) )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS standard_categories ( id INTEGER PRIMARY KEY AUTOINCREMENT, product_standard_id INTEGER NOT NULL, category_name TEXT NOT NULL, drawing_image_path TEXT, FOREIGN KEY (product_standard_id) REFERENCES product_standards(id) ON DELETE CASCADE )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS inspection_points ( id INTEGER PRIMARY KEY AUTOINCREMENT, standard_category_id INTEGER NOT NULL, point_number INTEGER, pos_x REAL, pos_y REAL, name TEXT, method TEXT, standard_value TEXT, tolerance TEXT, upper_limit TEXT, lower_limit TEXT, unit TEXT, tool_used TEXT, FOREIGN KEY (standard_category_id) REFERENCES standard_categories(id) ON DELETE CASCADE )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS inspection_logs ( id INTEGER PRIMARY KEY AUTOINCREMENT, production_order_id INTEGER NOT NULL, inspection_point_id INTEGER NOT NULL, inspection_result TEXT, measured_value TEXT, notes TEXT, inspector_id INTEGER, inspected_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (production_order_id) REFERENCES manufacturing_orders(id), FOREIGN KEY (inspection_point_id) REFERENCES inspection_points(id), FOREIGN KEY (inspector_id) REFERENCES users(id) )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS projects ( id INTEGER PRIMARY KEY AUTOINCREMENT, project_name TEXT NOT NULL, project_type TEXT, customer_id INTEGER, model_name TEXT, part_name TEXT, part_code TEXT, start_date TEXT, target_date TEXT, actual_finish_date TEXT, status TEXT DEFAULT 'In Process', progress INTEGER DEFAULT 0, part_image_path TEXT, drawing_path TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (customer_id) REFERENCES entities(id) )`);
+            dbInstance.run(`CREATE TABLE IF NOT EXISTS project_tasks ( id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, task_name TEXT NOT NULL, start_date TEXT, end_date TEXT, status TEXT DEFAULT 'pending', progress INTEGER DEFAULT 0, FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE )`);
+
+            // Seed roles and pages (similar to Postgres seed)
+            const allPages = [
+                { name: 'Dashboard', url: '/dashboard.html' },
+                { name: 'จัดการประวัติแม่พิมพ์', url: '/molds.html' },
+                { name: 'สร้างแม่พิมพ์ใหม่', url: '/create-mold.html' },
+                { name: 'แก้ไขข้อมูลแม่พิมพ์', url: '/edit-mold.html' },
+                { name: 'รายละเอียดแม่พิมพ์', url: '/mold-details.html' },
+                { name: 'จัดการ Part List', url: '/manage-parts.html' },
+                { name: 'จัดการ BOM', url: '/boms.html' },
+                { name: 'สร้าง BOM ใหม่', url: '/create-bom.html' },
+                { name: 'แก้ไข BOM', url: '/edit-bom.html' },
+                { name: 'รายละเอียด BOM', url: '/bom-details.html' },
+                { name: 'จัดการข้อมูลสินค้า', url: '/items.html' },
+                { name: 'สร้างสินค้าใหม่', url: '/create-item.html' },
+                { name: 'แก้ไขข้อมูลสินค้า', url: '/edit-item.html' },
+                { name: 'รายละเอียดสินค้า', url: '/item-details.html' },
+                { name: 'จัดการลูกค้า', url: '/customers.html' },
+                { name: 'จัดการผู้ขาย', url: '/vendors.html' },
+                { name: 'จัดการผู้ใช้', url: '/users.html' },
+                { name: 'เพิ่มผู้ใช้', url: '/add-user.html' },
+                { name: 'แก้ไขผู้ใช้', url: '/edit-user.html' },
+                { name: 'จัดการสิทธิ์', url: '/manage_permissions.html' }
+            ];
+
+            const insertPage = dbInstance.prepare(`INSERT OR IGNORE INTO pages (name, url) VALUES (?, ?)`);
+            for (const p of allPages) insertPage.run(p.name, p.url);
+            insertPage.finalize();
+
+            dbInstance.run(`INSERT OR IGNORE INTO roles (name) VALUES ('admin'), ('qc'), ('user')`);
+
+            // seed admin user if no users exist
+            dbInstance.get(`SELECT COUNT(*) AS cnt FROM users`, (err, row) => {
+                if (!err && row && row.cnt === 0) {
+                    const adminPass = bcrypt.hashSync('admin', 10);
+                    dbInstance.run(`INSERT INTO users (fullName, email, password, role) VALUES (?, ?, ?, ?)`,
+                        ['Administrator', 'admin@local', adminPass, 'admin']);
+                    console.log('✅ Admin user created (email: admin@local / password: admin)');
+                }
+            });
+
+            // --- Seed sample customers, vendors and items for mock/demo purposes ---
+            dbInstance.get(`SELECT COUNT(*) AS cnt FROM entities`, (err, row) => {
+                if (!err && row && row.cnt === 0) {
+                    const seedEntities = [
+                        { entity_code: 'CUS-0001', name: 'บริษัท ตัวอย่าง A', tax_id: '0105550001111', address: '123 ถนนตัวอย่าง', contact_person: 'สมชาย', email: 'cusA@example.com', phone: '0810000001', is_customer: 1, is_vendor: 0 },
+                        { entity_code: 'CUS-0002', name: 'บริษัท ตัวอย่าง B', tax_id: '0105550002222', address: '456 ถนนตัวอย่าง', contact_person: 'สมหญิง', email: 'cusB@example.com', phone: '0810000002', is_customer: 1, is_vendor: 0 },
+                        { entity_code: 'VDR-0001', name: 'ผู้ขาย ตัวอย่าง X', tax_id: '0105550003333', address: '789 ถนนสุขุมวิท', contact_person: 'นายขาย', email: 'vdrX@example.com', phone: '0820000001', is_customer: 0, is_vendor: 1 },
+                        { entity_code: 'VDR-0002', name: 'ผู้ขาย ตัวอย่าง Y', tax_id: '0105550004444', address: '101 ถนนสุขุมวิท', contact_person: 'นางขาย', email: 'vdrY@example.com', phone: '0820000002', is_customer: 0, is_vendor: 1 }
+                    ];
+                    const stmt = dbInstance.prepare(`INSERT OR IGNORE INTO entities (entity_code, name, address, tax_id, branch_code, branch_name, contact_person, email, phone, is_customer, is_vendor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                    for (const e of seedEntities) {
+                        stmt.run(e.entity_code, e.name, e.address, e.tax_id, null, null, e.contact_person, e.email, e.phone, e.is_customer, e.is_vendor);
+                    }
+                    stmt.finalize();
+                    console.log('✅ Seeded sample entities (customers & vendors).');
+                }
+            });
+
+            dbInstance.get(`SELECT COUNT(*) AS cnt FROM items`, (err, row) => {
+                if (!err && row && row.cnt === 0) {
+                    const seedItems = [
+                        { item_code: 'ITEM-0001', item_name: 'ชิ้นงาน A', item_type: 'Part', uom: 'pcs', stock_quantity: 100 },
+                        { item_code: 'ITEM-0002', item_name: 'ชิ้นงาน B', item_type: 'Part', uom: 'pcs', stock_quantity: 50 }
+                    ];
+                    const stmt2 = dbInstance.prepare(`INSERT OR IGNORE INTO items (item_code, item_name, item_type, uom, stock_quantity, status) VALUES (?, ?, ?, ?, ?, ?)`);
+                    for (const it of seedItems) {
+                        stmt2.run(it.item_code, it.item_name, it.item_type, it.uom, it.stock_quantity, 'active');
+                    }
+                    stmt2.finalize();
+                    console.log('✅ Seeded sample items.');
+                }
+            });
+
+            console.log('All SQLite tables initialized successfully.');
+        });
+    }
+
+    module.exports = dbInstance;
+}
+
+
+// No top-level initialization here — each branch initializes and exports its own DB object.

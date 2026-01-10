@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # 1. Database Service (PostgreSQL)
+  postgres:
+    image: postgres:15
+    container_name: smart_factory_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: smart_factory
+       TZ=Asia/Bangkok
+
+
+    ports:
+      - "5433:5432"  # Exposed to host on 5433 (to avoid conflict if 5432 is taken), internal 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Main Web Application (Node.js)
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: smart-factory-web:latest
+    container_name: smart_factory_web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SESSION_SECRET=${SESSION_SECRET:-smart_factory_secret_key_2025}
+      # Connect to 'postgres' service on internal port 5432
+      - DATABASE_URL=postgres://postgres:postgres123@postgres:5432/smart_factory
+      - TZ=Asia/Bangkok
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Persist uploads and static files if changed at runtime
+      - ./:/home/node/app                 # เชื่อม Code ข้างนอก เข้าข้างใน
+      - /home/node/app/node_modules       # ห้ามทับ node_modules ในตู้
+      - ./public/uploads:/home/node/app/public/uploads # เก็บไฟล์อัปโหลด
+    restart: unless-stopped
+
+  # 3. PLC Collector Service (Python)
+  plc:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    image: smart-factory-plc:latest
+    container_name: smart_factory_plc
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      # Connect to 'postgres' service on internal port 5432
+      - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/smart_factory
+      # Connect to 'web' service on internal port 3000
+      - NODEJS_API_URL=http://web:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      web:
+        condition: service_started
+    volumes:
+      - ./:/app
+    command: python app_fixed.py
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

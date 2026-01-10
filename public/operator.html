@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="th" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Machine Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+        .machine-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            height: 100%;
+        }
+        .machine-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .card-body {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .machine-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .status-badge {
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="sidebar"></aside>
+
+        <div class="page-wrapper">
+            <div class="page-header">
+                <div class="container-xl"><h2 class="page-title h1">Machine Status Dashboard</h2></div>
+            </div>
+            <div class="page-body">
+                <div class="container-xl">
+                    <p>Logged in as: <strong id="display-username">Loading...</strong></p>
+                    <div class="row row-cards" id="machine-dashboard-container">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js" defer></script>
+    <script src="/js/auth-client.js"></script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        
+        // --- ส่วนที่ 1: ฟังก์ชันพื้นฐาน (โหลด Sidebar, User Info) ---
+        async function loadSidebar() {
+            try {
+                const response = await fetchWithAuth('/api/sidebar'); 
+                const sidebarHtml = await response.text();
+                document.getElementById('sidebar').innerHTML = sidebarHtml;
+                // ✅ highlight: เพิ่มการเรียกใช้ฟังก์ชันไฮไลท์เมนู หลังจากโหลด Sidebar เสร็จ
+                setActiveMenuItem();
+            } catch (error) {
+                console.error("Could not load sidebar:", error);
+            }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetchWithAuth('/api/user-info');
+                const data = await response.json();
+                if (data.success && data.displayName) {
+                    document.getElementById('display-username').textContent = data.displayName;
+                }
+            } catch (error) {
+                console.error("Could not load user info:", error);
+            }
+        }
+
+        // --- ส่วนที่ 2: ฟังก์ชันสำหรับ Machine Dashboard ---
+        const container = document.getElementById('machine-dashboard-container');
+
+        const createMachineCard = (machine) => {
+            const isRunning = machine.mo_number;
+            const statusColor = isRunning ? 'success' : 'secondary';
+            const statusText = isRunning ? 'Running' : 'Idle';
+            const link = `operator_machine_view.html?machine=${machine.machine_code}`;
+
+            let jobInfoHtml = `
+                <div class="text-center text-muted" style="margin: 3rem 0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-coffee" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 14c.83 .642 2.077 1.017 3.5 1c1.423 .017 2.67 -.358 3.5 -1c.83 -.642 2.077 -1.017 3.5 -1c1.423 -.017 2.67 .358 3.5 1" /><path d="M8 3a2.4 2.4 0 0 0 -1 2a2.4 2.4 0 0 0 1 2" /><path d="M12 3a2.4 2.4 0 0 0 -1 2a2.4 2.4 0 0 0 1 2" /><path d="M3 10h14v5a6 6 0 0 1 -6 6h-2a6 6 0 0 1 -6 -6v-5z" /><path d="M16.746 16.726a3 3 0 1 0 .252 -5.555" /></svg>
+                    <p class="h3 mt-2">IDLE</p>
+                </div>`;
+
+            if(isRunning) {
+                const totalProduced = machine.total_produced || 0;
+                const target = machine.quantity_to_produce;
+                const progressPercent = target > 0 ? (totalProduced / target * 100).toFixed(1) : 0;
+
+                jobInfoHtml = `
+                    <div>
+                        <div class="subheader">Current Job</div>
+                        <p class="h2 text-primary">${machine.mo_number}</p>
+                        <div class="subheader mt-2">Item</div>
+                        <p class="h3">${machine.item_code}</p>
+                        
+                        <div class="d-flex align-items-center mb-1 mt-3">
+                            <div>Progress</div>
+                            <div class="ms-auto">
+                                <span class="text-muted">${totalProduced.toLocaleString()} / ${target.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div class="progress progress-sm">
+                            <div class="progress-bar bg-primary" style="width: ${progressPercent}%" role="progressbar">
+                                <span class="visually-hidden">${progressPercent}% Complete</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="col-sm-6 col-lg-4">
+                    <a href="${link}" class="card machine-card text-decoration-none">
+                        <div class="card-body">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="machine-name">${machine.machine_code}</div>
+                                    <span class="badge status-badge bg-${statusColor}-lt">${statusText}</span>
+                                </div>
+                                <p class="text-muted">${machine.machine_name}</p>
+                            </div>
+                            ${jobInfoHtml}
+                        </div>
+                    </a>
+                </div>
+            `;
+        };
+
+        const fetchData = async () => {
+            try {
+                // ✅ highlight: เปลี่ยนมาใช้ fetchWithAuth เพื่อความปลอดภัยและเสถียรภาพ
+                const response = await fetchWithAuth('/api/dashboard/machines-overview');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    container.innerHTML = result.data.map(createMachineCard).join('');
+                } else {
+                    container.innerHTML = `<div class="alert alert-warning">${result.error || 'No machine data found.'}</div>`;
+                }
+            } catch (e) {
+                console.error("Failed to load machine data:", e);
+                container.innerHTML = `<div class="alert alert-danger">Could not connect to the server.</div>`;
+            }
+        };
+        
+        // --- ส่วนที่ 3: เรียกใช้งานฟังก์ชันทั้งหมด ---
+        loadSidebar();
+        loadUserInfo();
+        fetchData();
+        setInterval(fetchData, 5000); // Refresh ทุก 5 วินาที
+    });
+    </script>
+</body>
+</html>
