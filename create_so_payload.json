@@ -1,0 +1,22 @@
+{
+  "so_number": "SO-202605-002",
+  "customer_po_number": "PO-2026-002",
+  "customer_id": 2,
+  "order_date": "2026-05-26T00:00:00Z",
+  "due_date": "2026-06-09T00:00:00Z",
+  "total_amount": 5000,
+  "items": [
+    {
+      "item_code": "FG-0001",
+      "quantity": 5,
+      "unit_price": 250,
+      "total_price": 1250
+    },
+    {
+      "item_code": "FG-0002",
+      "quantity": 3,
+      "unit_price": 350,
+      "total_price": 1050
+    }
+  ]
+}

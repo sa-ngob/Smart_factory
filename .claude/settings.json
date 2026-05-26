@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -b /tmp/cookies.txt http://localhost:3000/dashboard.html)"
+    ]
+  }
+}

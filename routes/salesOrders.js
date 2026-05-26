@@ -110,7 +110,7 @@ router.get('/:id', async (req, res) => {
     const soId = req.params.id;
     const soSql = `
         SELECT so.*, e.name as customer_name, e.address as customer_address, e.phone as customer_phone,
-               e.email as customer_email, u.full_name as created_by_name
+               e.email as customer_email, u.fullname as created_by_name
         FROM sales_orders so
         JOIN entities e ON so.customer_id = e.id
         LEFT JOIN users u ON so.created_by = u.id

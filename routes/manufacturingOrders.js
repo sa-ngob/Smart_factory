@@ -4,7 +4,7 @@ const { pool, ...db } = require('../database.js');
 const inventoryService = require('../services/inventoryService.js');
 
 // Helper function to generate next MO Number
-const getNextMoNumber = async () => {
+const getNextMoNumber = async (queryClient) => {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -12,7 +12,8 @@ const getNextMoNumber = async () => {
     const sql = `SELECT mo_number FROM manufacturing_orders WHERE mo_number LIKE $1 ORDER BY mo_number DESC LIMIT 1`;
 
     try {
-        const row = await db.getAsync(sql, [`${prefix}%`]);
+        const result = queryClient ? await queryClient.query(sql, [`${prefix}%`]) : await db.query(sql, [`${prefix}%`]);
+        const row = queryClient ? result.rows[0] : result.rows[0];
         let nextSequence = 1;
         if (row) {
             const lastSequence = parseInt(row.mo_number.replace(prefix, ''), 10);
@@ -56,7 +57,7 @@ router.post('/from-so', async (req, res) => {
 
             if (!bom) throw new Error(`ไม่พบ BOM ที่ใช้งานได้สำหรับสินค้า ${item.item_code}`);
 
-            const mo_number = await getNextMoNumber();
+            const mo_number = await getNextMoNumber(client);
 
             const params = [mo_number, so_id, item.item_code, item.quantity, bom.id, soDetails.due_date, 'pending'];
             await client.query(`INSERT INTO manufacturing_orders (mo_number, so_id, item_code, quantity_to_produce, bom_id, due_date, status) VALUES ($1, $2, $3, $4, $5, $6, $7)`, params);
@@ -220,12 +221,11 @@ router.get('/', async (req, res) => {
     const sql = `
         SELECT
             mo.id, mo.mo_number, mo.item_code, i.item_name,
-            mo.quantity_to_produce, mo.due_date, mo.status, so.so_number,
+            mo.quantity_to_produce, mo.status,
             (SELECT SUM(pr.good_quantity) FROM production_records pr WHERE pr.mo_id = mo.id) as total_good_quantity,
-            mc.machine_name
+            mc.machine_code
         FROM manufacturing_orders mo
         LEFT JOIN items i ON mo.item_code = i.item_code
-        LEFT JOIN sales_orders so ON mo.so_id = so.id
         LEFT JOIN machines mc ON mo.machine_id = mc.id
         ORDER BY mo.id DESC
     `;
@@ -277,7 +277,6 @@ router.get('/:id', async (req, res) => {
         SELECT
             mo.*, i.item_name, i.part_weight_gram, so.so_number,
             b.version as bom_version,
-            m.mold_code, m.mold_name, m.cycle_time_sec, m.cavity,
             COALESCE((
                 SELECT SUM(pr.good_quantity)
                 FROM production_records pr
@@ -287,7 +286,6 @@ router.get('/:id', async (req, res) => {
         LEFT JOIN items i ON mo.item_code = i.item_code
         LEFT JOIN sales_orders so ON mo.so_id = so.id
         LEFT JOIN boms b ON mo.bom_id = b.id
-        LEFT JOIN molds m ON b.mold_id = m.id
         WHERE mo.id = $1
     `;
 
@@ -316,10 +314,13 @@ router.get('/:id', async (req, res) => {
 
             materialRows = rawMaterials.map(m => {
                 const ratio = parseFloat(m.mixing_ratio) || 0;
+                const currentStock = parseFloat(m.current_stock_kg) || 0;
                 // Formula: (PartWeight * Qty * (Ratio/100)) / 1000  => Output in KG
                 const reqKg = (partWeight * qty * (ratio / 100.0)) / 1000.0;
                 return {
                     ...m,
+                    mixing_ratio: ratio,
+                    current_stock_kg: currentStock,
                     required_kg: reqKg
                 };
             });

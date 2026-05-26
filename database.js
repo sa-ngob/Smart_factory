@@ -33,7 +33,9 @@ const db = {
 
 async function initializeTables() {
     try {
-        // Drop and recreate users table to ensure correct schema
+        // Drop and recreate tables to ensure correct schema
+        await pool.query(`DROP TABLE IF EXISTS delivery_order_items CASCADE`).catch(() => {});
+        await pool.query(`DROP TABLE IF EXISTS delivery_orders CASCADE`).catch(() => {});
         await pool.query(`DROP TABLE IF EXISTS users CASCADE`).catch(() => {});
 
         await pool.query(`
@@ -96,6 +98,31 @@ async function initializeTables() {
         `).catch(() => {
             // Table might already exist
         });
+
+        // Create delivery_orders table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS delivery_orders (
+                id SERIAL PRIMARY KEY,
+                do_number VARCHAR(100) UNIQUE NOT NULL,
+                so_id INTEGER REFERENCES sales_orders(id),
+                customer_id INTEGER REFERENCES entities(id),
+                shipping_date TIMESTAMP DEFAULT NOW(),
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+
+        // Create delivery_order_items table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS delivery_order_items (
+                id SERIAL PRIMARY KEY,
+                do_id INTEGER NOT NULL REFERENCES delivery_orders(id) ON DELETE CASCADE,
+                so_item_id INTEGER,
+                quantity_shipped INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
 
         // Create admin user if not exists
         const adminUser = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@local']);

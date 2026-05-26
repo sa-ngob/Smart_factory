@@ -1,0 +1,48 @@
+[2026-05-26T08:27:14.133Z] GET /api/purchase-orders Error: relation "purchase_orders" does not exist
+error: relation "purchase_orders" does not exist
+    at /home/node/app/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/node/app/routes/purchaseOrders.js:29:24
+
+[2026-05-26T08:27:24.064Z] GET /api/purchase-orders Error: relation "purchase_orders" does not exist
+error: relation "purchase_orders" does not exist
+    at /home/node/app/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/node/app/routes/purchaseOrders.js:29:24
+
+[2026-05-26T08:28:02.178Z] GET /api/purchase-orders Error: relation "purchase_orders" does not exist
+error: relation "purchase_orders" does not exist
+    at /home/node/app/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/node/app/routes/purchaseOrders.js:29:24
+
+[2026-05-26T10:25:40.378Z] GET /api/purchase-orders Error: relation "purchase_orders" does not exist
+error: relation "purchase_orders" does not exist
+    at /home/node/app/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/node/app/routes/purchaseOrders.js:29:24
+
+[2026-05-26T14:48:39.599Z] GET /api/purchase-orders Error: relation "purchase_orders" does not exist
+error: relation "purchase_orders" does not exist
+    at /home/node/app/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/node/app/routes/purchaseOrders.js:29:24
+
+[2026-05-26T14:50:47.072Z] GET /api/purchase-orders Error: relation "purchase_orders" does not exist
+error: relation "purchase_orders" does not exist
+    at /home/node/app/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/node/app/routes/purchaseOrders.js:29:24
+
+[2026-05-26T14:54:26.166Z] GET /:id (1) Error: column po.expect_delivery_date does not exist
+error: column po.expect_delivery_date does not exist
+    at /home/node/app/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/node/app/routes/purchaseOrders.js:145:26
+
+[2026-05-26T14:54:30.328Z] GET /:id (1) Error: column po.expect_delivery_date does not exist
+error: column po.expect_delivery_date does not exist
+    at /home/node/app/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/node/app/routes/purchaseOrders.js:145:26
+

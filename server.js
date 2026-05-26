@@ -203,6 +203,18 @@ app.get('/*.html', isAuthenticated, (req, res, next) => {
     res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
+// --- Static Assets Fallback (for /static/ path) ---
+app.get('/static/*', (req, res) => {
+    let filePath = req.path.replace('/static/', '');
+    // If PNG not found, try SVG instead
+    if (filePath.endsWith('.png')) {
+        filePath = filePath.replace('.png', '.svg');
+    }
+    res.sendFile(path.join(__dirname, 'public', filePath), (err) => {
+        if (err) res.status(404).send('Asset not found');
+    });
+});
+
 // --- Protected Main Route ---
 app.get('/', isAuthenticated, (req, res) => {
     res.redirect('/dashboard.html');

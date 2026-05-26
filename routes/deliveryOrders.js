@@ -5,6 +5,7 @@ const db = require('../database.js');
 
 // GET /api/delivery-orders - Get all delivery orders
 router.get('/', async (req, res) => {
+    console.log('GET / (list) called');
     try {
         const sql = `
             SELECT
@@ -84,6 +85,11 @@ router.post('/', async (req, res) => {
     }
 });
 
+// GET /api/delivery-orders/test-endpoint - TEST ENDPOINT
+router.get('/test-endpoint', async (req, res) => {
+    return res.json({ success: true, message: 'TEST ENDPOINT WORKING' });
+});
+
 // GET /api/delivery-orders/:id - Get DO details
 router.get('/:id', async (req, res) => {
     try {
@@ -91,7 +97,9 @@ router.get('/:id', async (req, res) => {
 
         const detailsSql = `
             SELECT
-                d.*, c.name as customer_name, c.address as customer_address,
+                d.id, d.do_number, d.so_id, d.customer_id, d.shipping_date, d.status,
+                d.created_at, d.updated_at,
+                c.name as customer_name, c.address as customer_address,
                 c.phone as customer_phone, c.tax_id as customer_tax_id
             FROM delivery_orders d
             LEFT JOIN entities c ON d.customer_id = c.id
@@ -119,7 +127,7 @@ router.get('/:id', async (req, res) => {
 
         res.json({ success: true, data: { details, items: itemsResult.rows } });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: 'DELIVERY_ORDERS_GET_ERROR: ' + error.message });
     }
 });
 

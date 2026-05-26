@@ -437,9 +437,8 @@ router.get('/dashboard-data', async (req, res) => {
         }
 
         if (machine) {
-            whereClauses.push(`(m.machine_name ILIKE $${paramIdx} OR m.machine_code ILIKE $${paramIdx})`);
+            whereClauses.push(`m.machine_code ILIKE $${paramIdx++}`);
             params.push(`%${machine}%`);
-            paramIdx++;
         }
 
         if (inspector) {
@@ -516,7 +515,7 @@ router.get('/filter-options', async (req, res) => {
         // 2. Machines
         let machines = [];
         try {
-            const machineSql = `SELECT id, machine_name, machine_code FROM machines ORDER BY machine_name`;
+            const machineSql = `SELECT id, machine_code FROM machines ORDER BY machine_code`;
             machines = await db.allAsync(machineSql);
         } catch (e) { console.warn("Could not fetch machines:", e.message); }
 

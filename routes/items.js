@@ -90,6 +90,19 @@ router.get('/by-vendor/:vendorId', async (req, res) => {
     }
 });
 
+// GET /api/items/by-code/:code - ดึงข้อมูลสินค้าจากรหัสสินค้า
+router.get('/by-code/:code', async (req, res) => {
+    const itemCode = req.params.code;
+    const sql = `SELECT * FROM items WHERE item_code = $1`;
+    try {
+        const row = await db.getAsync(sql, [itemCode]);
+        if (!row) return res.status(404).json({ error: "Item not found" });
+        res.json({ data: row });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // READ: ดึงข้อมูลสินค้าชิ้นเดียว (เหมือนเดิม)
 router.get('/:id', async (req, res) => {
     const sql = `SELECT i.*, e.name as customer_name FROM items i LEFT JOIN entities e ON i.customer_id = e.id WHERE i.id = $1`;
@@ -171,14 +184,14 @@ router.put('/:id', upload.single('image'), async (req, res) => {
             const sql = `UPDATE items SET
                 item_code = $1, customer_id = $2, item_name = $3, model = $4, material_name = $5,
                 grade = $6, colour = $7, part_weight_gram = $8, cycle_time_sec = $9, item_type = $10, uom = $11, status = $12,
-                selling_price = $13, cost_price = $14, min_stock = $15
-                WHERE id = $16`;
+                selling_price = $13, cost_price = $14, min_stock = $15, image_path = $16
+                WHERE id = $17`;
             const params = [
                 data.item_code, parseNumber(data.customer_id), data.item_name, data.model, data.material_name,
                 data.grade, data.colour, parseNumber(data.part_weight_gram), parseNumber(data.cycle_time_sec),
                 data.item_type, data.uom, data.status || 'active',
                 parseNumber(data.selling_price) || 0, parseNumber(data.cost_price) || 0, parseNumber(data.min_stock) || 0,
-                itemId
+                image_path, itemId
             ];
             await client.query(sql, params);
             await client.query("DELETE FROM item_vendors WHERE item_id = $1", [itemId]);

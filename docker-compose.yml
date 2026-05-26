@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
       POSTGRES_DB: smart_factory
-       TZ=Asia/Bangkok
+      TZ: Asia/Bangkok
 
 
     ports:

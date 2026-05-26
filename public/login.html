@@ -42,46 +42,45 @@
     </div>
     
     <script>
-    document.getElementById('login-form').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        
-        const form = event.target;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        const alertContainer = document.getElementById('alert-container');
-        alertContainer.innerHTML = ''; // Clear previous alerts
-        
-        try {
-            // ✅ Changed: Use /auth/login endpoint
-            const response = await fetch('/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                window.location.href = result.redirectUrl; // Redirect based on server response
-            } else {
-                alertContainer.innerHTML = `<div class="alert alert-danger" role="alert">${result.message}</div>`;
-            }
-        } catch (error) {
-            console.error('Login Error:', error);
-            alertContainer.innerHTML = `<div class="alert alert-danger" role="alert">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>`;
-        }
-         // ✅ เพิ่มโค้ดส่วนนี้เข้ามา
     document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(window.location.search);
         const success = params.get('success');
         const container = document.getElementById('alert-container');
-        
+
         if (success === 'registered') {
             const alertHtml = `<div class="alert alert-success" role="alert">สร้างบัญชีสำเร็จแล้ว! กรุณาลงชื่อเข้าใช้</div>`;
             container.innerHTML = alertHtml;
         }
+
+        document.getElementById('login-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = '';
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    window.location.href = result.redirectUrl;
+                } else {
+                    alertContainer.innerHTML = `<div class="alert alert-danger" role="alert">${result.message}</div>`;
+                }
+            } catch (error) {
+                console.error('Login Error:', error);
+                alertContainer.innerHTML = `<div class="alert alert-danger" role="alert">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>`;
+            }
+        });
     });
-    });
-</script>
+    </script>
   </body>
 </html>
