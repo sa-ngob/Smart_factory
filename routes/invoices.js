@@ -8,7 +8,7 @@ const db = require('../database.js');
 router.get('/', async (req, res) => {
     try {
         const sql = `
-            SELECT inv.id, inv.invoice_number, inv.issue_date, inv.due_date,
+            SELECT inv.id, inv.invoice_number, inv.issue_date,
                    inv.grand_total, inv.status, e.name as customer_name
             FROM invoices inv
             LEFT JOIN entities e ON inv.customer_id = e.id
@@ -92,11 +92,11 @@ router.get('/items-for-customer/:customerId', async (req, res) => {
 
 // POST / - Create a new invoice
 router.post('/', async (req, res) => {
-    const { customer_id, customer_po_number, invoice_number, issue_date, due_date, sub_total, tax_amount, grand_total, items, delivery_order_ids } = req.body;
+    const { customer_id, invoice_number, issue_date, grand_total, items, delivery_order_ids } = req.body;
     // Handle session userId or default to 1 (admin) if missing
     const created_by = req.session?.userId || 1;
 
-    if (!customer_id || !invoice_number || !issue_date || !due_date || !items || !delivery_order_ids) {
+    if (!customer_id || !invoice_number || !issue_date || !grand_total || !items || !delivery_order_ids) {
         return res.status(400).json({ success: false, error: 'Incomplete data' });
     }
 
@@ -106,8 +106,8 @@ router.post('/', async (req, res) => {
 
         // Insert Invoice
         const invResult = await client.query(
-            'INSERT INTO invoices (invoice_number, customer_id, customer_po_number, issue_date, due_date, sub_total, tax_amount, grand_total, status, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id',
-            [invoice_number, customer_id, customer_po_number, issue_date, due_date, sub_total, tax_amount, grand_total, 'pending_issue', created_by]
+            'INSERT INTO invoices (invoice_number, customer_id, issue_date, grand_total, status, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+            [invoice_number, customer_id, issue_date, grand_total, 'pending', created_by]
         );
         const invoice_id = invResult.rows[0].id;
 
