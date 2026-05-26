@@ -27,7 +27,7 @@ router.get('/next-receipt-number', async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const sql = `
-            SELECT r.id, r.receipt_number, r.payment_date, r.total_amount_paid, r.status, e.name as customer_name
+            SELECT r.id, r.receipt_number, r.receipt_date, r.amount, r.status, e.name as customer_name
             FROM receipts r LEFT JOIN entities e ON r.customer_id = e.id
             ORDER BY r.id DESC;`;
         const result = await db.query(sql, []);
@@ -41,10 +41,10 @@ router.get('/', async (req, res) => {
 
 // POST / - Create a new receipt
 router.post('/', async (req, res) => {
-    const { customer_id, payment_date, payment_method, total_amount_paid, notes, billing_note_ids } = req.body;
+    const { customer_id, receipt_date, payment_method, amount, notes, billing_note_ids } = req.body;
     const created_by = req.session && req.session.userId ? req.session.userId : 1;
 
-    if (!customer_id || !payment_date || total_amount_paid === undefined || !billing_note_ids || !Array.isArray(billing_note_ids) || billing_note_ids.length === 0) {
+    if (!customer_id || !receipt_date || amount === undefined || !billing_note_ids || !Array.isArray(billing_note_ids) || billing_note_ids.length === 0) {
         return res.status(400).json({ success: false, error: 'ข้อมูลไม่ครบถ้วน' });
     }
 
@@ -62,14 +62,14 @@ router.post('/', async (req, res) => {
         const receipt_number = `${prefix}${nextId.toString().padStart(4, '0')}`;
 
         const receiptResult = await client.query(
-            `INSERT INTO receipts (receipt_number, customer_id, payment_date, payment_method, total_amount_paid, notes, status, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-            [receipt_number, customer_id, payment_date, payment_method, total_amount_paid, notes, 'pending_confirmation', created_by]
+            `INSERT INTO receipts (receipt_number, customer_id, receipt_date, payment_method, amount, notes, status, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+            [receipt_number, customer_id, receipt_date, payment_method, amount, notes, 'recorded', created_by]
         );
         const receipt_id = receiptResult.rows[0].id;
 
         for (const bn_id of billing_note_ids) {
-            await client.query('INSERT INTO receipt_billing_notes (receipt_id, billing_note_id) VALUES ($1, $2)', [receipt_id, bn_id]);
-            await client.query(`UPDATE billing_notes SET status = 'collected' WHERE id = $1`, [bn_id]);
+            await client.query('INSERT INTO receipt_items (receipt_id, amount_paid) VALUES ($1, $2)', [receipt_id, amount]);
+            await client.query(`UPDATE billing_notes SET status = 'paid' WHERE id = $1`, [bn_id]);
         }
 
         await client.query('COMMIT');
@@ -94,10 +94,10 @@ router.get('/:id', async (req, res) => {
 
         if (!details) return res.status(404).json({ success: false, error: 'Receipt not found' });
 
-        const invoicesSql = `SELECT inv.invoice_number, inv.issue_date, inv.sub_total, inv.tax_amount, inv.grand_total FROM invoices inv JOIN billing_note_invoices bni ON inv.id = bni.invoice_id JOIN receipt_billing_notes rbn ON bni.billing_note_id = rbn.billing_note_id WHERE rbn.receipt_id = $1 ORDER BY inv.issue_date, inv.invoice_number;`;
-        const invoicesResult = await db.query(invoicesSql, [receiptId]);
+        const itemsSql = `SELECT * FROM receipt_items WHERE receipt_id = $1 ORDER BY created_at;`;
+        const itemsResult = await db.query(itemsSql, [receiptId]);
 
-        res.json({ success: true, data: { details, invoices: invoicesResult.rows } });
+        res.json({ success: true, data: { details, items: itemsResult.rows } });
     } catch (error) {
         console.error("GET /:id Error:", error);
         res.status(500).json({ success: false, error: error.message });
