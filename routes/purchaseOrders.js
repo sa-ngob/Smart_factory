@@ -134,8 +134,8 @@ router.get('/:id', async (req, res) => {
         const poId = req.params.id;
 
         const poSql = `
-            SELECT 
-                po.id, po.po_number, po.order_date, po.status, po.total_amount, po.quotation_ref, po.expect_delivery_date as expected_date,
+            SELECT
+                po.id, po.po_number, po.order_date, po.status, po.total_amount, po.quotation_ref,
                 e.name as vendor_name, e.address as vendor_address, e.tax_id as vendor_tax_id,
                 e.phone as vendor_phone, e.contact_person as vendor_contact
             FROM purchase_orders po
