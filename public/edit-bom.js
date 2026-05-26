@@ -67,12 +67,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const { bom, items } = bomDataResult;
 
-            pageTitle.textContent = `แก้ไข BOM: ${bom.product_name} (Rev. ${bom.version})`;
+            pageTitle.textContent = `แก้ไข BOM: ${bom.product_part_number} (Rev. ${bom.version})`;
             productSelect.value = bom.product_part_number;
-            productNameInput.value = bom.product_name;
-            moldSelect.value = bom.mold_id;
-            
-            versionInput.value = parseInt(bom.version, 10) + 1;
+            productNameInput.value = bom.product_part_number;
+
+            versionInput.value = bom.version;
             versionInput.readOnly = true;
 
             activeSwitch.closest('.col-md-2').style.display = 'none';
@@ -168,9 +167,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const bomData = {
-            product_part_number: productSelect.value,
-            product_name: productNameInput.value,
-            mold_id: moldSelect.value,
             version: versionInput.value,
             items: []
         };
