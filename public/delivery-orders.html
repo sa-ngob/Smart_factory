@@ -341,9 +341,9 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            customer_id: customerId, // <-- Send correct customerId
+                            so_id: soId,
+                            customer_id: customerId,
                             shipping_date: shippingDate,
-                            shipping_address: document.getElementById('shipping-address').value,
                             items: items
                         })
                     });
