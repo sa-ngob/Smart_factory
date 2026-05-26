@@ -99,34 +99,35 @@ router.post('/', async (req, res) => {
     }
 });
 
-// UPDATE: สร้าง Revision ใหม่ **โดยไม่ลบรายการวัตถุดิบเก่า**
+// UPDATE: อัปเดต BOM และรายการวัตถุดิบ
 router.put('/:id', async (req, res) => {
-    const oldBomId = req.params.id;
-    const { product_part_number, version, items } = req.body;
+    const bomId = req.params.id;
+    const { version, items } = req.body;
 
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
 
-        // ขั้นตอนที่ 1: ปิดการใช้งาน BOM เวอร์ชันเก่า (ไม่ยุ่งกับ bom_items)
-        const sqlDeactivate = `UPDATE boms SET is_active = 0 WHERE id = $1`;
-        await client.query(sqlDeactivate, [oldBomId]);
+        // ขั้นตอนที่ 1: อัปเดตเวอร์ชัน BOM
+        if (version) {
+            const sqlUpdate = `UPDATE boms SET version = $1 WHERE id = $2`;
+            await client.query(sqlUpdate, [version, bomId]);
+        }
 
-        // ขั้นตอนที่ 2: สร้าง BOM เวอร์ชันใหม่
-        const sqlCreateNew = `INSERT INTO boms (product_part_number, version, is_active) VALUES ($1, $2, 1) RETURNING id`;
-        const bomRes = await client.query(sqlCreateNew, [product_part_number, version]);
-        const newBomId = bomRes.rows[0].id;
+        // ขั้นตอนที่ 2: ลบรายการวัตถุดิบเก่า
+        await client.query('DELETE FROM bom_items WHERE bom_id = $1', [bomId]);
 
-        // ขั้นตอนที่ 3: เพิ่มรายการวัตถุดิบสำหรับ BOM "ใหม่" เท่านั้น
-        const sqlItem = `INSERT INTO bom_items (bom_id, material_code, material_name, mixing_ratio, unit) VALUES ($1, $2, $3, $4, $5)`;
-
-        for (const item of items) {
-            await client.query(sqlItem, [newBomId, item.material_code, item.material_name, item.mixing_ratio, item.unit]);
+        // ขั้นตอนที่ 3: เพิ่มรายการวัตถุดิบใหม่
+        if (items && items.length > 0) {
+            const sqlItem = `INSERT INTO bom_items (bom_id, material_code, material_name, mixing_ratio, unit) VALUES ($1, $2, $3, $4, $5)`;
+            for (const item of items) {
+                await client.query(sqlItem, [bomId, item.material_code, item.material_name, item.mixing_ratio, item.unit]);
+            }
         }
 
         await client.query('COMMIT');
-        res.json({ "message": "success", "id": newBomId });
+        res.json({ "message": "success", "id": bomId });
 
     } catch (err) {
         await client.query('ROLLBACK');
