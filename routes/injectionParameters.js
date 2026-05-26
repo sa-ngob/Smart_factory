@@ -2,41 +2,20 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 
-// Ensure Table Exists
-const createTableSql = `
+// Ensure Table Exists (PostgreSQL)
+const pgSql = `
     CREATE TABLE IF NOT EXISTS injection_parameter_checks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         machine_id INTEGER,
         mo_number TEXT,
-        check_date TEXT DEFAULT (datetime('now', 'localtime')),
+        check_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         inspector_id INTEGER,
-        parameter_data TEXT, 
+        parameter_data TEXT,
         image_paths TEXT,
         notes TEXT
     );
 `;
-// Use the underlying db instance to run this once
-if (db.run) {
-    db.run(createTableSql, (err) => {
-        if (err) console.error("Error creating injection table:", err);
-        else console.log("Injection table ensured (SQLite).");
-    });
-} else if (db.query) {
-    // Postgres fallback
-    const pgSql = `
-        CREATE TABLE IF NOT EXISTS injection_parameter_checks (
-            id SERIAL PRIMARY KEY,
-            machine_id INTEGER,
-            mo_number TEXT,
-            check_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            inspector_id INTEGER,
-            parameter_data TEXT,
-            image_paths TEXT,
-            notes TEXT
-        );
-    `;
-    db.query(pgSql).then(() => console.log("Injection table ensured (PG).")).catch(e => console.error(e));
-}
+db.query(pgSql).then(() => console.log("Injection table ensured (PG).")).catch(e => console.error("Error creating injection table:", e));
 
 function ensureAuthenticated(req, res, next) {
     if (req.session && req.session.userId) {
@@ -90,11 +69,11 @@ router.post('/save', ensureAuthenticated, (req, res) => {
 router.get('/history/:mo_number', ensureAuthenticated, (req, res) => {
     const { mo_number } = req.params;
     const sql = `
-        SELECT ipc.*, u.fullName as inspector_name, m.machine_name 
+        SELECT ipc.*, u.fullname as inspector_name, m.machine_code
         FROM injection_parameter_checks ipc
         LEFT JOIN users u ON ipc.inspector_id = u.id
         LEFT JOIN machines m ON ipc.machine_id = m.id
-        WHERE ipc.mo_number = ? 
+        WHERE ipc.mo_number = $1
         ORDER BY ipc.check_date DESC
     `;
 
@@ -108,8 +87,8 @@ router.get('/history/:mo_number', ensureAuthenticated, (req, res) => {
 router.get('/latest/:machine_id', ensureAuthenticated, (req, res) => {
     const { machine_id } = req.params;
     const sql = `
-        SELECT * FROM injection_parameter_checks 
-        WHERE machine_id = ? 
+        SELECT * FROM injection_parameter_checks
+        WHERE machine_id = $1
         ORDER BY check_date DESC LIMIT 1
     `;
     db.get(sql, [machine_id], (err, row) => {

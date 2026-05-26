@@ -8,10 +8,8 @@ const { pool, ...db } = require('../database.js');
 router.get('/', async (req, res) => {
     const sql = `
         SELECT
-            b.id, b.product_part_number, b.product_name, b.version, b.is_active,
-            m.mold_code
+            b.id, b.product_part_number, b.version, b.is_active
         FROM boms b
-        LEFT JOIN molds m ON b.mold_id = m.id
         WHERE b.is_active = 1
         ORDER BY b.product_part_number
     `;
@@ -28,7 +26,7 @@ router.get('/:id', async (req, res) => {
     const bomId = req.params.id;
     const responseData = {};
     try {
-        const sqlBom = `SELECT b.*, m.mold_code FROM boms b LEFT JOIN molds m ON b.mold_id = m.id WHERE b.id = $1`;
+        const sqlBom = `SELECT b.* FROM boms b WHERE b.id = $1`;
         const bom = await db.getAsync(sqlBom, [bomId]);
 
         if (!bom) return res.status(404).json({ "error": "BOM not found" });
@@ -46,7 +44,7 @@ router.get('/:id', async (req, res) => {
         responseData.items = items;
 
         const sqlHistory = `
-            SELECT id, version, creation_date, is_active
+            SELECT id, version, is_active
             FROM boms
             WHERE product_part_number = $1
             ORDER BY version DESC`;
@@ -61,8 +59,7 @@ router.get('/:id', async (req, res) => {
 
 // CREATE: สร้าง BOM ใหม่ครั้งแรก
 router.post('/', async (req, res) => {
-    const { product_part_number, product_name, mold_id, version, items } = req.body;
-    const creation_date = new Date().toISOString();
+    const { product_part_number, version, items } = req.body;
 
     const client = await pool.connect();
 
@@ -77,8 +74,8 @@ router.post('/', async (req, res) => {
 
         await client.query('BEGIN');
 
-        const sqlBom = `INSERT INTO boms (product_part_number, product_name, mold_id, creation_date, version, is_active) VALUES ($1, $2, $3, $4, $5, 1) RETURNING id`;
-        const bomRes = await client.query(sqlBom, [product_part_number, product_name, mold_id, creation_date, version]);
+        const sqlBom = `INSERT INTO boms (product_part_number, version, is_active) VALUES ($1, $2, 1) RETURNING id`;
+        const bomRes = await client.query(sqlBom, [product_part_number, version]);
         const bomId = bomRes.rows[0].id;
 
         const sqlItem = `INSERT INTO bom_items (bom_id, material_code, material_name, mixing_ratio, unit) VALUES ($1, $2, $3, $4, $5)`;
@@ -100,8 +97,7 @@ router.post('/', async (req, res) => {
 // UPDATE: สร้าง Revision ใหม่ **โดยไม่ลบรายการวัตถุดิบเก่า**
 router.put('/:id', async (req, res) => {
     const oldBomId = req.params.id;
-    const { product_part_number, product_name, mold_id, version, items } = req.body;
-    const creation_date = new Date().toISOString();
+    const { product_part_number, version, items } = req.body;
 
     const client = await pool.connect();
 
@@ -113,8 +109,8 @@ router.put('/:id', async (req, res) => {
         await client.query(sqlDeactivate, [oldBomId]);
 
         // ขั้นตอนที่ 2: สร้าง BOM เวอร์ชันใหม่
-        const sqlCreateNew = `INSERT INTO boms (product_part_number, product_name, mold_id, creation_date, version, is_active) VALUES ($1, $2, $3, $4, $5, 1) RETURNING id`;
-        const bomRes = await client.query(sqlCreateNew, [product_part_number, product_name, mold_id, creation_date, version]);
+        const sqlCreateNew = `INSERT INTO boms (product_part_number, version, is_active) VALUES ($1, $2, 1) RETURNING id`;
+        const bomRes = await client.query(sqlCreateNew, [product_part_number, version]);
         const newBomId = bomRes.rows[0].id;
 
         // ขั้นตอนที่ 3: เพิ่มรายการวัตถุดิบสำหรับ BOM "ใหม่" เท่านั้น

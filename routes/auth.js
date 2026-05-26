@@ -24,7 +24,7 @@ router.post('/login', (req, res) => {
                 req.session.role = user.role;
 
                 // Add the user's full name to the session
-                req.session.name = user.full_name;
+                req.session.name = user.fullname;
 
                 req.session.save((err) => {
                     if (err) {
@@ -53,8 +53,8 @@ router.post('/register', (req, res) => {
             return res.status(500).send("Server error during registration.");
         }
 
-        // ✅ Use 'full_name' column (matches database schema)
-        const sql = `INSERT INTO users (full_name, email, password, role) VALUES ($1, $2, $3, 'user')`;
+        // ✅ Use 'fullname' column (matches database schema)
+        const sql = `INSERT INTO users (fullname, email, password, role) VALUES ($1, $2, $3, 'user')`;
         db.run(sql, [name, email, hashedPassword], function (err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) {
