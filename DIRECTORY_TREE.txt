@@ -1,0 +1,247 @@
+Smart Factory - Project Directory Tree
+=====================================
+
+smart-factory/
+├── server.js                      # Main Express server
+├── database.js                    # PostgreSQL connection config
+├── package.json
+├── package-lock.json
+│
+├── config/                        # Application configuration
+│   ├── ecosystem.config.js        # PM2 configuration
+│   └── nodemon.json               # Development server config
+│
+├── docker/                        # Docker configuration
+│   ├── Dockerfile                 # Node.js container
+│   ├── Dockerfile.python          # Python service container
+│   ├── docker-compose.yml         # Compose orchestration
+│   └── build-and-run-docker.ps1   # Build script
+│
+├── deploy/                        # Deployment & setup scripts
+│   ├── setup-environment.ps1
+│   ├── deploy_fix.ps1
+│   ├── fix_*.bat
+│   └── ...
+│
+├── docs/                          # Documentation
+│   └── setup/
+│       ├── PROJECT_SUMMARY.md
+│       ├── PROJECT_STRUCTURE.md
+│       ├── FIXES_2026-05-26.md
+│       ├── README-docker.md
+│       ├── DEPLOY_INSTRUCTIONS_TH.md
+│       └── ...
+│
+├── backup/                        # Backup & archived files
+│   ├── *.sql                      # Database backups
+│   ├── database.js.bak_old
+│   ├── *.db
+│   └── ...
+│
+├── scripts/                       # Utility scripts
+│   ├── database/
+│   │   ├── checks/               # Database validation (11 scripts)
+│   │   │   ├── check_users.js
+│   │   │   ├── check_items_schema.js
+│   │   │   ├── check_db_mappings.js
+│   │   │   ├── check_entities_schema.js
+│   │   │   ├── check_finance_tables.js
+│   │   │   ├── check_machines.js
+│   │   │   ├── check_plc_data.js
+│   │   │   ├── check_perms.js
+│   │   │   ├── check_pg.js
+│   │   │   ├── check_sqlite.js
+│   │   │   └── check_branch_data.js
+│   │   │
+│   │   ├── fixes/                # Database fixes (8 scripts)
+│   │   │   ├── fix_items_schema.js
+│   │   │   ├── fix_inventory_schema.js
+│   │   │   ├── fix_entities_schema.js
+│   │   │   ├── fix_invoices_schema.js
+│   │   │   ├── fix_invoices_created_by.js
+│   │   │   ├── fix_delivery_orders_schema.js
+│   │   │   ├── fix_downtime_data.js
+│   │   │   ├── fix_machine_data.js
+│   │   │   ├── fix_*.sql
+│   │   │   └── ...
+│   │   │
+│   │   ├── migrations/            # Schema creation (3 scripts)
+│   │   │   ├── create_injection_tables.js
+│   │   │   ├── create_quality_tables.js
+│   │   │   ├── create_*.sql
+│   │   │   ├── add_*.sql
+│   │   │   └── ...
+│   │   │
+│   │   ├── seeds/                 # Test data generators (8 scripts)
+│   │   │   ├── seed_entities.js
+│   │   │   ├── seed_mock_data.js
+│   │   │   ├── seed_sales_data.js
+│   │   │   ├── seed_realtime_data.js
+│   │   │   ├── seed_downtime_logs.js
+│   │   │   ├── seed_defect_codes.js
+│   │   │   ├── mock_oee_weekly.js
+│   │   │   ├── mock_3_items.js
+│   │   │   └── ...
+│   │   │
+│   │   └── init/                  # DB initialization (1 script)
+│   │       └── init_finance_tables.js
+│   │
+│   ├── python/                   # Python scripts (15+ files)
+│   │   ├── app.py                # Main Python app
+│   │   ├── app_fixed.py
+│   │   ├── main_collector.py     # Data collection
+│   │   ├── plc_tester.py         # PLC testing
+│   │   ├── mockup_generator.py   # Mock data generator
+│   │   ├── test_db_connection.py
+│   │   ├── recreate_mapping_table.py
+│   │   ├── delete_test_data.py
+│   │   ├── update_db.py
+│   │   ├── find_postgres_password.py
+│   │   ├── PLC_modbus_pull.sr3   # Modbus config
+│   │   ├── oee20251016.sr3
+│   │   ├── probe_db.js
+│   │   └── controller-*.py
+│   │
+│   └── utilities/                # Helper scripts (20+ files)
+│       ├── debug_*.js            # Debug scripts
+│       ├── generate_admin_hash.js
+│       ├── inject_test_data.js
+│       ├── register_injection_page.js
+│       ├── reseed_downtime.js
+│       ├── update_items_schema.js
+│       ├── upgrade_db_schema.js
+│       ├── reset_admin_password.js
+│       ├── clear_plc_data.js
+│       └── ...
+│
+├── routes/                        # API routes (20+ files)
+│   ├── auth.js                   # Authentication
+│   ├── users.js
+│   ├── roles.js
+│   ├── permissions.js
+│   ├── entities.js               # Customers/Vendors
+│   ├── items.js                  # Products/Items
+│   ├── machines.js
+│   ├── boms.js                   # Bill of Materials
+│   ├── inventory.js
+│   ├── salesOrders.js
+│   ├── manufacturingOrders.js
+│   ├── productionRecords.js
+│   ├── deliveryOrders.js
+│   ├── purchaseOrders.js
+│   ├── invoices.js
+│   ├── receipts.js
+│   ├── quality.js                # QC management
+│   ├── dashboard.js
+│   ├── devices.js                # PLC devices
+│   ├── downtime.js
+│   ├── injectionParameters.js
+│   └── ...
+│
+├── middleware/                    # Express middleware
+│   ├── auth.js                   # Authentication middleware
+│   └── ...
+│
+├── services/                      # Business logic
+│   └── ...
+│
+├── views/                         # EJS templates
+│   ├── dashboard.ejs
+│   ├── deliveryOrders.ejs
+│   ├── manufacturingOrders.ejs
+│   ├── roles.ejs
+│   ├── permissions.ejs
+│   └── partials/
+│       ├── sidebar.ejs
+│       └── ...
+│
+├── public/                        # Frontend assets
+│   ├── index.html                # Home page
+│   ├── login.html
+│   ├── register.html
+│   ├── dashboard.html
+│   ├── delivery-orders.html
+│   ├── delivery-order-detail.html
+│   ├── machines.html
+│   ├── mo-detail.html
+│   ├── bom-details.js
+│   ├── edit-bom.js
+│   ├── operator.html
+│   ├── machines.html
+│   ├── js/
+│   │   ├── auth-client.js        # Client auth helpers
+│   │   └── ...
+│   ├── css/
+│   │   ├── style.css
+│   │   └── ...
+│   └── uploads/                  # User uploads
+│       ├── items/                # Item images
+│       ├── quality_drawings/     # QC drawings
+│       └── ...
+│
+├── template/                      # Template files
+│   └── ...
+│
+├── tests/                         # Tests & test data
+│   └── data/
+│       ├── test_*.js
+│       ├── *_payload.json        # API payloads
+│       ├── *.html                # Test HTML
+│       ├── cookies.txt           # Session cookies
+│       ├── session_*.txt         # Session data
+│       └── ...
+│
+├── .vscode/                       # VS Code settings
+│   └── *.code-workspace
+│
+├── src/                           # (Planned) Refactored source
+│   ├── config/
+│   ├── middleware/
+│   ├── routes/
+│   └── services/
+│
+├── .claude/                       # Claude AI settings
+│   └── settings.json
+│
+├── .git/                          # Git repository
+│
+└── PROJECT_STRUCTURE.md           # This documentation
+
+
+File Organization Summary
+=========================
+
+Root Level Files: 6 essential files
+- server.js, database.js, package.json, package-lock.json, smart_factory.db
+
+Core Directories: 8 directories
+- config/, docker/, deploy/, docs/, backup/, scripts/, routes/, public/
+
+Template/View Directories: 3 directories
+- views/, template/, .vscode/
+
+Development Directories: 3 directories
+- middleware/, services/, tests/
+
+Scripts Organized: 100+ scripts
+- Database scripts: 30+
+- Python scripts: 15+
+- Utility scripts: 20+
+- Deployment scripts: 10+
+- Documentation files: 8+
+
+
+Quick Navigation
+================
+
+API Routes:        routes/
+Frontend Pages:    public/
+Templates:         views/
+Database Scripts:  scripts/database/
+Python Scripts:    scripts/python/
+Utilities:         scripts/utilities/
+Config:            config/
+Docker Setup:      docker/
+Deploy Scripts:    deploy/
+Documentation:     docs/setup/
+Backups:           backup/

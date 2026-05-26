@@ -343,7 +343,7 @@
             fetch(`/api/delivery-orders/${doId}`)
                 .then(response => response.ok ? response.json() : Promise.reject('Network error'))
                 .then(result => {
-                    if (!result.success) throw new Error(result.error);
+                    if (!result.data) throw new Error('Invalid response format');
                     const { details, items } = result.data;
 
                     document.title = `DO ${details.do_number} - Smart Factory`;

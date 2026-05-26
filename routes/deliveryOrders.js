@@ -85,15 +85,11 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET /api/delivery-orders/test-endpoint - TEST ENDPOINT
-router.get('/test-endpoint', async (req, res) => {
-    return res.json({ success: true, message: 'TEST ENDPOINT WORKING' });
-});
-
 // GET /api/delivery-orders/:id - Get DO details
 router.get('/:id', async (req, res) => {
     try {
         const doId = req.params.id;
+        const responseData = {};
 
         const detailsSql = `
             SELECT
@@ -105,16 +101,19 @@ router.get('/:id', async (req, res) => {
             LEFT JOIN entities c ON d.customer_id = c.id
             WHERE d.id = $1
         `;
+
         const detailsResult = await db.query(detailsSql, [doId]);
         const details = detailsResult.rows[0];
 
         if (!details) {
-            return res.status(404).json({ success: false, error: 'Delivery Order not found' });
+            return res.status(404).json({ error: 'Delivery Order not found' });
         }
+
+        responseData.details = details;
 
         const itemsSql = `
             SELECT
-                doi.quantity_shipped, i.item_code, i.item_name, i.uom,
+                doi.id, doi.quantity_shipped, i.item_code, i.item_name, i.uom,
                 so.so_number, so.customer_po_number,
                 soi.unit_price
             FROM delivery_order_items doi
@@ -124,10 +123,12 @@ router.get('/:id', async (req, res) => {
             WHERE doi.do_id = $1
         `;
         const itemsResult = await db.query(itemsSql, [doId]);
+        responseData.items = itemsResult.rows;
 
-        res.json({ success: true, data: { details, items: itemsResult.rows } });
+        res.json({ data: responseData });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'DELIVERY_ORDERS_GET_ERROR: ' + error.message });
+        console.error("Error at GET /api/delivery-orders/:id :", error);
+        res.status(500).json({ error: error.message });
     }
 });
 
