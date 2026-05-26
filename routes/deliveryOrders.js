@@ -92,10 +92,9 @@ router.get('/:id', async (req, res) => {
         const detailsSql = `
             SELECT
                 d.*, c.name as customer_name, c.address as customer_address,
-                c.phone as customer_phone, c.tax_id as customer_tax_id, u.fullname as created_by_name
+                c.phone as customer_phone, c.tax_id as customer_tax_id
             FROM delivery_orders d
             LEFT JOIN entities c ON d.customer_id = c.id
-            LEFT JOIN users u ON d.created_by = u.id
             WHERE d.id = $1
         `;
         const detailsResult = await db.query(detailsSql, [doId]);
