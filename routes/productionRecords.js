@@ -77,12 +77,12 @@ router.post('/', async (req, res) => {
         // Insert ลงตารางหลัก (ใช้ total_scrap_quantity และ shift ให้ตรงกับ DB)
         const mainSql = `
             INSERT INTO production_records
-            (mo_id, record_date, shift, operator_name, good_quantity, total_scrap_quantity, notes)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            (mo_id, record_date, shift, operator_name, good_quantity, total_scrap_quantity)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
         `;
 
-        const mainParams = [mo_id, final_record_date, shift || 'Morning', operator_name, good_quantity || 0, total_scrap_quantity, notes];
+        const mainParams = [mo_id, final_record_date, shift || 'Morning', operator_name, good_quantity || 0, total_scrap_quantity];
         const recordRes = await client.query(mainSql, mainParams);
         const record_id = recordRes.rows[0].id;
 
