@@ -50,7 +50,7 @@ function renderBomDetails(data) {
     const editBomBtn = document.getElementById('edit-bom-btn');
 
     if (bomTitleElement) {
-        bomTitleElement.textContent = `รายละเอียด BOM: ${bom.product_name} (Rev. ${bom.version})`;
+        bomTitleElement.textContent = `รายละเอียด BOM: ${bom.product_part_number} (Rev. ${bom.version})`;
     }
     if (editBomBtn) {
         // ปุ่มแก้ไขจะทำงานได้ก็ต่อเมื่อ BOM เป็นเวอร์ชันที่ Active เท่านั้น
@@ -70,13 +70,8 @@ function renderBomDetails(data) {
             <div class="row">
                 <div class="col-md-6">
                     <p><strong>รหัสสินค้า (Part Number):</strong> ${bom.product_part_number || '-'}</p>
-                    <p><strong>ชื่อสินค้า (Part Name):</strong> ${bom.product_name || '-'}</p>
                     <p><strong>เวอร์ชัน:</strong> ${bom.version || '-'}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>รหัสแม่พิมพ์ (Mold Code):</strong> ${bom.mold_code || 'ไม่ได้ผูกกับแม่พิมพ์'}</p>
                     <p><strong>สถานะ:</strong> ${bom.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Archived</span>'}</p>
-                    <p><strong>วันที่สร้าง:</strong> ${new Date(bom.creation_date).toLocaleDateString('th-TH')}</p>
                 </div>
             </div>
         `;
@@ -89,10 +84,11 @@ function renderBomDetails(data) {
         if (items && items.length > 0) {
             items.forEach(item => {
                 const row = document.createElement('tr');
+                const ratio = typeof item.mixing_ratio === 'string' ? parseFloat(item.mixing_ratio) : item.mixing_ratio;
                 row.innerHTML = `
                     <td>${item.material_code}</td>
                     <td>${item.material_name}</td>
-                    <td class="text-end">${item.mixing_ratio.toFixed(2)}</td>
+                    <td class="text-end">${ratio ? ratio.toFixed(2) : '0.00'}</td>
                     <td>${item.unit}</td>
                 `;
                 bomItemsBody.appendChild(row);
@@ -125,7 +121,6 @@ function renderBomHistory(history) {
 
         row.innerHTML = `
             <td>${rev.version}</td>
-            <td>${new Date(rev.creation_date).toLocaleString('th-TH')}</td>
             <td>${statusBadge}</td>
             <td class="text-end">
                 <a href="/bom-details.html?id=${rev.id}" class="btn btn-sm">ดูรายละเอียด</a>
