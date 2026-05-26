@@ -159,13 +159,22 @@
 
                 editMachineModal = new bootstrap.Modal(document.getElementById('modal-edit-machine'));
 
+                // Helper function for fetch with timeout
+                function fetchWithTimeout(url, timeout = 3000) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), timeout);
+                    return fetch(url, { signal: controller.signal })
+                        .then(res => { clearTimeout(timeoutId); return res; })
+                        .catch(err => { clearTimeout(timeoutId); return null; });
+                }
+
                 async function fetchMachines() {
                     console.log("Fetching machines...");
                     try {
                         const [machinesRes, plcStatusRes, plcConfigRes] = await Promise.all([
                             fetchWithAuth('/api/machines?t=' + new Date().getTime()),
-                            fetch('http://192.168.2.5:5000/api/data').catch(e => { console.warn("PLC API fetch failed (might be offline):", e); return null; }),
-                            fetch('http://192.168.2.5:5000/api/plc-configs').catch(e => { console.warn("PLC Config fetch failed:", e); return null; })
+                            fetchWithTimeout('http://192.168.2.5:5000/api/data', 3000).catch(e => { console.warn("PLC API fetch failed (might be offline):", e); return null; }),
+                            fetchWithTimeout('http://192.168.2.5:5000/api/plc-configs', 3000).catch(e => { console.warn("PLC Config fetch failed:", e); return null; })
                         ]);
 
                         const machinesData = await machinesRes.json();
