@@ -61,6 +61,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     const { product_part_number, version, items } = req.body;
 
+    // Validate required fields
+    if (!product_part_number || !version) {
+        return res.status(400).json({ error: "product_part_number และ version เป็นข้อมูลจำเป็น" });
+    }
+
     const client = await pool.connect();
 
     try {

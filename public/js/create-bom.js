@@ -127,11 +127,14 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        if (!productSelect.value) {
+            alert('กรุณาเลือกสินค้า');
+            return;
+        }
+
         const bomData = {
             product_part_number: productSelect.value,
-            product_name: productNameInput.value,
-            mold_id: moldSelect.value,
-            version: this.elements.version.value,
+            version: this.elements.version.value || '1.0',
             items: []
         };
         const itemRows = itemsTableBody.querySelectorAll('tr');
