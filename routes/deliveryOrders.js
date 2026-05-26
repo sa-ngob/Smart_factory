@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
 
 // POST /api/delivery-orders - Create a new delivery order
 router.post('/', async (req, res) => {
-    const { customer_id, shipping_date, shipping_address, items } = req.body;
+    const { so_id, customer_id, shipping_date, items } = req.body;
 
     if (!customer_id || !shipping_date || !items || !items.length) {
         return res.status(400).json({ success: false, error: 'ข้อมูลไม่ครบถ้วน' });
@@ -59,12 +59,12 @@ router.post('/', async (req, res) => {
         }
         const do_number = `${prefix}${nextId.toString().padStart(4, '0')}`;
 
-        const insertSql = 'INSERT INTO delivery_orders (do_number, customer_id, shipping_date, shipping_address, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id';
-        const doResult = await client.query(insertSql, [do_number, customer_id, shipping_date, shipping_address, created_by]);
+        const insertSql = 'INSERT INTO delivery_orders (do_number, so_id, customer_id, shipping_date, status) VALUES ($1, $2, $3, $4, $5) RETURNING id';
+        const doResult = await client.query(insertSql, [do_number, so_id, customer_id, shipping_date, 'pending']);
         const do_id = doResult.rows[0].id;
 
         for (const item of items) {
-            await client.query('INSERT INTO delivery_order_items (do_id, so_item_id, item_code, quantity_shipped) VALUES ($1, $2, $3, $4)', [do_id, item.so_item_id, item.item_code, item.quantity_shipped]);
+            await client.query('INSERT INTO delivery_order_items (do_id, so_item_id, quantity_shipped) VALUES ($1, $2, $3)', [do_id, item.so_item_id, item.quantity_shipped]);
             await client.query('UPDATE items SET stock_quantity = stock_quantity - $1 WHERE item_code = $2', [item.quantity_shipped, item.item_code]);
             const currentStockRes = await client.query('SELECT stock_quantity FROM items WHERE item_code = $1', [item.item_code]);
             const currentStock = currentStockRes.rows[0];
@@ -92,7 +92,7 @@ router.get('/:id', async (req, res) => {
         const detailsSql = `
             SELECT
                 d.*, c.name as customer_name, c.address as customer_address,
-                c.phone as customer_phone, c.tax_id as customer_tax_id, u.full_name as created_by_name
+                c.phone as customer_phone, c.tax_id as customer_tax_id, u.fullname as created_by_name
             FROM delivery_orders d
             LEFT JOIN entities c ON d.customer_id = c.id
             LEFT JOIN users u ON d.created_by = u.id
@@ -111,8 +111,8 @@ router.get('/:id', async (req, res) => {
                 so.so_number, so.customer_po_number,
                 soi.unit_price
             FROM delivery_order_items doi
-            JOIN items i ON doi.item_code = i.item_code
             JOIN sales_order_items soi ON doi.so_item_id = soi.id
+            JOIN items i ON soi.item_code = i.item_code
             JOIN sales_orders so ON soi.so_id = so.id
             WHERE doi.do_id = $1
         `;
