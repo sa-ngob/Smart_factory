@@ -91,6 +91,7 @@
     window.fetchWithAuth = fetchWithAuth;
     window.loadUserInfo = loadUserInfo;
     window.loadSidebar = loadSidebar;
+    window.setActiveMenuItem = setActiveMenuItem;
 
     // Auto-load on ready
     document.addEventListener('DOMContentLoaded', async () => {

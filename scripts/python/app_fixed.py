@@ -300,13 +300,17 @@ def update_smart_factory_db(machine_id, decoded_tags): # decoded_tags ที่�
         with app.app_context():
             ict_tz = timezone(timedelta(hours=7))
             current_ict_time = datetime.now(ict_tz).strftime('%Y-%m-%d %H:%M:%S')
+
+            db.session.execute(text("DELETE FROM machine_data WHERE machine_id = :machine_id"),
+                             {"machine_id": machine_code})
+
             sql = text("""
                 INSERT INTO machine_data (
-                    machine_id, timestamp, machine_status, mold_count, 
+                    machine_id, timestamp, machine_status, mold_count,
                     mold_temp_core, mold_temp_cavity, cycle_time_sec, material_dry_temp,
                     mo_number, item_name
                 ) VALUES (
-                    :machine_id, :timestamp, :status, :count, 
+                    :machine_id, :timestamp, :status, :count,
                     :core, :cavity, :cycle_time, :dry_temp,
                     :mo_number, :item_name
                 )
@@ -324,13 +328,13 @@ def update_smart_factory_db(machine_id, decoded_tags): # decoded_tags ที่�
             }
             db.session.execute(sql, params)
             db.session.commit()
-            print(f"    [{machine_code}] Data: MO={params['mo_number']}, Item={params['item_name']}, Count={params['count']} -> Synced to smart_factory.db")
+            print(f"    [{machine_code}] Data: MO={params['mo_number']}, Item={params['item_name']}, Count={params['count']} -> Updated")
             if 'machine_status' in decoded_tags:
                 log_machine_status_change(machine_code, decoded_tags['machine_status'])
     except Exception as e:
         with app.app_context():
             db.session.rollback()
-        print(f"    [{machine_code}] -> ❌ FAILED during DB operation: {e}")
+        print(f"    [{machine_code}] -> ❌ FAILED: {e}")
         # traceback.print_exc()
 
 def log_machine_status_change(machine_code, current_status):
@@ -350,7 +354,7 @@ def log_machine_status_change(machine_code, current_status):
         with app.app_context():
             # Find the last open log
             last_log = MachineStatusLog.query.filter_by(machine_id=machine_code, end_time=None).order_by(MachineStatusLog.start_time.desc()).first()
-            
+
             if last_log:
                 duration = int((now_local - last_log.start_time).total_seconds())
                 last_log.end_time = now_local
@@ -364,25 +368,23 @@ def log_machine_status_change(machine_code, current_status):
             # Update machine status
             status_map = {0: 'idle', 1: 'running', 2: 'down'}
             new_status_text = status_map.get(current_status, 'idle')
-            
+
             # Assuming Machine model exists and has machine_code
             machine = Machine.query.filter_by(machine_code=machine_code).first()
             if machine:
-                machine.status = new_status_text # You might need to add 'status' column to Machine model if not exists
+                machine.status = new_status_text
                 db.session.add(machine)
             else:
-                # Fallback if Machine model doesn't have status or isn't queryable this way, use raw SQL or ignore
                 from sqlalchemy import text
                 db.session.execute(text("UPDATE machines SET status = :status WHERE machine_code = :code"), {"status": new_status_text, "code": machine_code})
 
             db.session.commit()
-            
-    except Exception as e:
-        print(f"    [{machine_code}] -> ❌ FAILED to write status log: {e}")
-        traceback.print_exc()
+            last_known_statuses[machine_code] = current_status
+            print(f"    [{machine_code}] Status changed from {last_status} to {current_status}. Logged.")
 
-    last_known_statuses[machine_code] = current_status
-    print(f"    [{machine_code}] Status changed from {last_status} to {current_status}. Logged.")
+    except Exception as e:
+        print(f"    [{machine_code}] -> FAILED to log status: {e}")
+        traceback.print_exc()
 
 # --- 6. Flask Routes (เหมือนเดิม ยกเว้นส่วนที่เกี่ยวกับ Mapping) ---
 @app.route('/')

@@ -173,8 +173,9 @@
                     try {
                         const [machinesRes, plcStatusRes, plcConfigRes] = await Promise.all([
                             fetchWithAuth('/api/machines?t=' + new Date().getTime()),
-                            fetchWithTimeout('http://192.168.2.5:5000/api/data', 3000).catch(e => { console.warn("PLC API fetch failed (might be offline):", e); return null; }),
-                            fetchWithTimeout('http://192.168.2.5:5000/api/plc-configs', 3000).catch(e => { console.warn("PLC Config fetch failed:", e); return null; })
+                            // PLC API calls - gracefully fail if not available
+                            Promise.resolve(null), // PLC data endpoint not available locally
+                            Promise.resolve(null)  // PLC config endpoint not available locally
                         ]);
 
                         const machinesData = await machinesRes.json();

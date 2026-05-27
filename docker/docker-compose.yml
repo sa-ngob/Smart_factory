@@ -44,9 +44,9 @@ services:
         condition: service_healthy
     volumes:
       # Persist uploads and static files if changed at runtime
-      - ./:/home/node/app                 # เชื่อม Code ข้างนอก เข้าข้างใน
-      - /home/node/app/node_modules       # ห้ามทับ node_modules ในตู้
-      - ./public/uploads:/home/node/app/public/uploads # เก็บไฟล์อัปโหลด
+      - ..:/home/node/app                 # Mount project root to /home/node/app
+      - /home/node/app/node_modules       # Don't overwrite node_modules in container
+      - ../public/uploads:/home/node/app/public/uploads # Store uploaded files
     restart: unless-stopped
 
   # 3. PLC Collector Service (Python)
@@ -72,7 +72,7 @@ services:
       web:
         condition: service_started
     volumes:
-      - ./:/app
+      - ..:/app
     command: python /app/scripts/python/app_fixed.py
     restart: unless-stopped
 

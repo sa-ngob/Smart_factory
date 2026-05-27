@@ -20,15 +20,15 @@
                         <form id="add-mapping-form">
                             <div class="mb-3">
                                 <label for="plc-name" class="form-label">PLC Name</label>
-                                <select id="plc-name" class="form-select" required></select>
+                                <select id="plc-name" name="plc-name" class="form-select" required></select>
                             </div>
                             <div class="mb-3">
                                 <label for="tag-name" class="form-label">Tag Name</label>
-                                <input type="text" class="form-control" id="tag-name" placeholder="e.g., Machine_Temperature" required>
+                                <input type="text" class="form-control" id="tag-name" name="tag-name" placeholder="e.g., Machine_Temperature" required>
                             </div>
                             <div class="mb-3">
                                 <label for="data-type" class="form-label">Data Type</label>
-                                <select id="data-type" class="form-select" required>
+                                <select id="data-type" name="data-type" class="form-select" required>
                                     <option value="holding_register">Holding Register</option>
                                     <option value="string">String (from Registers)</option>
                                     <option value="coil_x">Input Coil (X)</option>
@@ -38,11 +38,11 @@
                             </div>
                             <div class="mb-3">
                                 <label for="address" class="form-label">Modbus Start Address</label>
-                                <input type="number" class="form-control" id="address" placeholder="e.g., 41005" required>
+                                <input type="number" class="form-control" id="address" name="address" placeholder="e.g., 41005" required>
                             </div>
                             <div class="mb-3" id="length-container" style="display: none;">
                                 <label for="length" class="form-label">Length (Characters)</label>
-                                <input type="number" class="form-control" id="length" placeholder="e.g., 10">
+                                <input type="number" class="form-control" id="length" name="length" placeholder="e.g., 10">
                             </div>
                             <button type="submit" class="btn btn-primary w-100">Save Mapping</button>
                         </form>
