@@ -25,9 +25,9 @@ services:
 
   # 2. Main Web Application (Node.js)
   web:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     image: smart-factory-web:latest
     container_name: smart_factory_web
     ports:
@@ -52,13 +52,12 @@ services:
   # 3. PLC Collector Service (Python)
   plc:
     build:
-      context: .
-      dockerfile: Dockerfile.python
+      context: ..
+      dockerfile: docker/Dockerfile.python
     image: smart-factory-plc:latest
     container_name: smart_factory_plc
     ports:
       - "5000:5000"
-    working_dir: /app/scripts/python
     environment:
       - FLASK_ENV=production
       # Connect to 'postgres' service on internal port 5432
@@ -74,7 +73,7 @@ services:
         condition: service_started
     volumes:
       - ./:/app
-    command: python app_fixed.py
+    command: python /app/scripts/python/app_fixed.py
     restart: unless-stopped
 
 volumes:
