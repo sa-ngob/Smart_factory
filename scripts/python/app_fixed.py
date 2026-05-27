@@ -93,7 +93,23 @@ def decode_registers_to_string(registers):
     return byte_string.decode('utf-8', errors='ignore').rstrip('\x00')
 
 # --- 3. Flask Web Server & Database Setup ---
-app = Flask(__name__, template_folder='template')
+# Get the project root directory
+# Works both locally and in Docker
+try:
+    # Try to get template folder from environment variable first
+    template_folder_path = os.environ.get('TEMPLATE_PATH')
+    if not template_folder_path:
+        # Fallback: calculate from current file location
+        script_dir = os.path.dirname(os.path.abspath(__file__))  # scripts/python
+        project_root = os.path.dirname(os.path.dirname(script_dir))  # project root
+        template_folder_path = os.path.join(project_root, 'template')
+
+    # Create app with resolved template path
+    app = Flask(__name__, template_folder=template_folder_path)
+    print(f"[INFO] Flask app initialized with template folder: {template_folder_path}")
+except Exception as e:
+    print(f"[ERROR] Failed to set template folder: {e}")
+    app = Flask(__name__)  # Fallback without template folder
 CORS(app, supports_credentials=True)
 # Priority: Environment Variable > Default Localhost
 # --- FIX: แก้ Database URL เป็น postgres:5432 ---

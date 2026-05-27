@@ -58,12 +58,15 @@ services:
     container_name: smart_factory_plc
     ports:
       - "5000:5000"
+    working_dir: /app/scripts/python
     environment:
       - FLASK_ENV=production
       # Connect to 'postgres' service on internal port 5432
       - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/smart_factory
       # Connect to 'web' service on internal port 3000
       - NODEJS_API_URL=http://web:3000
+      # Set template folder path for Flask
+      - TEMPLATE_PATH=/app/template
     depends_on:
       postgres:
         condition: service_healthy
