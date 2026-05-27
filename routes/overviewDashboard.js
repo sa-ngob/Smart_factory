@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
         const promises = {
             total_sales: all(`SELECT SUM(grand_total) as total FROM invoices inv WHERE inv.status != 'cancelled' ${invoiceDateFilter}`),
             in_progress_mo: all(`SELECT COUNT(id) as count FROM manufacturing_orders WHERE status = 'in_progress'`),
-            quality_stats: all(`SELECT CAST(COALESCE(SUM(good_quantity), 0) AS REAL) as total_good, CAST(COALESCE(SUM(total_scrap_quantity), 0) AS REAL) as total_scrap FROM production_records pr`),
+            quality_stats: all(`SELECT CAST(COALESCE(SUM(good_quantity), 0) AS REAL) as total_good, CAST(COALESCE(SUM(waste_quantity), 0) AS REAL) as total_scrap FROM production_records pr`),
             running_machines: all(`
                 SELECT COUNT(*) as count 
                 FROM machine_data t1 

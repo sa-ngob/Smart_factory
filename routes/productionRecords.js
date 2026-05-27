@@ -74,10 +74,10 @@ router.post('/', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // Insert ลงตารางหลัก (ใช้ total_scrap_quantity และ shift ให้ตรงกับ DB)
+        // Insert ลงตารางหลัก (ใช้ waste_quantity และ shift ให้ตรงกับ DB)
         const mainSql = `
             INSERT INTO production_records
-            (mo_id, record_date, shift, operator_name, good_quantity, total_scrap_quantity)
+            (mo_id, record_date, shift, operator_name, good_quantity, waste_quantity)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
         `;

@@ -98,7 +98,7 @@ router.post('/record-production', async (req, res) => {
 
         // ใช้ NOW() เพื่อบันทึกเวลาปัจจุบันจาก Server (PostgreSQL)
         const result = await pool.query(
-            "INSERT INTO production_records (mo_id, record_date, shift, operator_name, good_quantity, total_scrap_quantity) VALUES ($1, NOW(), 'day', $2, $3, $4) RETURNING id",
+            "INSERT INTO production_records (mo_id, record_date, shift, operator_name, good_quantity, waste_quantity) VALUES ($1, NOW(), 'day', $2, $3, $4) RETURNING id",
             [mo[0].id, operator_name, good_quantity, scraps.reduce((s, i) => s + i.quantity, 0)]
         );
 
@@ -119,11 +119,11 @@ router.get('/machine-view/:machineCode', async (req, res) => {
 
         // Updated Query to get Cavity and Shot Count
         const job = await all(`
-            SELECT 
-                mo.*, 
-                i.item_name, 
-                (SELECT COALESCE(SUM(good_quantity), 0) FROM production_records pr WHERE pr.mo_id = mo.id) as total_good, 
-                (SELECT COALESCE(SUM(total_scrap_quantity), 0) FROM production_records pr WHERE pr.mo_id = mo.id) as total_scrap,
+            SELECT
+                mo.*,
+                i.item_name,
+                (SELECT COALESCE(SUM(good_quantity), 0) FROM production_records pr WHERE pr.mo_id = mo.id) as total_good,
+                (SELECT COALESCE(SUM(waste_quantity), 0) FROM production_records pr WHERE pr.mo_id = mo.id) as total_scrap,
                 
                 -- Helper: Get Cavity
                 (SELECT m.cavity FROM boms b JOIN molds m ON b.mold_id = m.id WHERE b.id = mo.bom_id LIMIT 1) as cavity,
