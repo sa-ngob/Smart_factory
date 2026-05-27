@@ -209,7 +209,7 @@
                     document.getElementById('placeholder-text').classList.add('d-none');
                     const { summary, time_series, production_records, scrap_details, cycle_series, shift_series } = json.data;
                     const totalGood = (production_records || []).reduce((s, r) => s + (r.good_quantity || 0), 0);
-                    const totalScrap = (production_records || []).reduce((s, r) => s + (r.total_scrap_quantity || 0), 0);
+                    const totalScrap = (production_records || []).reduce((s, r) => s + (r.waste_quantity || 0), 0);
                     const target = summary.quantity_to_produce || 0;
                     document.getElementById('kpi-total-product').innerText = target.toLocaleString();
                     document.getElementById('kpi-total-good').innerText = totalGood.toLocaleString();
@@ -217,7 +217,7 @@
                     document.getElementById('kpi-diff').innerText = (target - (totalGood + totalScrap)).toLocaleString();
                     const progress = target > 0 ? (((totalGood + totalScrap) / target) * 100).toFixed(1) : 0;
                     document.getElementById('summary-container').innerHTML = `<div class="row"><div class="col-6 mb-2"><strong>MO:</strong> ${summary.mo_number}</div><div class="col-6 mb-2"><strong>Item:</strong> ${summary.item_name}</div><div class="col-6 mb-2"><strong>Machine:</strong> ${summary.machine_code}</div><div class="col-6 mb-2"><strong>Status:</strong> <span class="badge bg-blue-lt">${summary.status}</span></div></div><div class="mt-2"><div class="d-flex justify-content-between"><span>Progress</span><span>${progress}%</span></div><div class="progress"><div class="progress-bar" style="width: ${progress}%"></div></div></div>`;
-                    document.getElementById('production-records-table').innerHTML = (production_records || []).map(r => `<tr><td>${formatDateTime(r.record_date)}</td><td>${r.operator_name}</td><td class="text-success text-end">${r.good_quantity}</td><td class="text-danger text-end">${r.total_scrap_quantity}</td></tr>`).join('');
+                    document.getElementById('production-records-table').innerHTML = (production_records || []).map(r => `<tr><td>${formatDateTime(r.record_date)}</td><td>${r.operator_name}</td><td class="text-success text-end">${r.good_quantity}</td><td class="text-danger text-end">${r.waste_quantity}</td></tr>`).join('');
                     updateCharts(time_series, scrap_details, cycle_series, shift_series);
                 } catch (e) { console.error(e); }
             }
