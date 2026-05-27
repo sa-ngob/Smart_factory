@@ -1,8 +1,16 @@
+# -*- coding: utf-8 -*-
 import time
 import json
 import threading
 import traceback
 import math
+import sys
+import io
+
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 import struct
 
 from flask import Flask, render_template, request, jsonify
@@ -322,7 +330,7 @@ def update_smart_factory_db(machine_id, decoded_tags): # decoded_tags ที่�
     except Exception as e:
         with app.app_context():
             db.session.rollback()
-        print(f"    [{machine_code}] -> ❌ FAILED during DB operation: {e}")
+        print(f"    [{machine_code}] -> [FAILED] FAILED during DB operation: {e}")
         # traceback.print_exc()
 
 def log_machine_status_change(machine_code, current_status):
@@ -370,7 +378,7 @@ def log_machine_status_change(machine_code, current_status):
             db.session.commit()
             
     except Exception as e:
-        print(f"    [{machine_code}] -> ❌ FAILED to write status log: {e}")
+        print(f"    [{machine_code}] -> [FAILED] FAILED to write status log: {e}")
         traceback.print_exc()
 
     last_known_statuses[machine_code] = current_status
@@ -608,11 +616,11 @@ def write_job_to_plc():
         # --- FIX: เพิ่มการหน่วงเวลาเล็กน้อยเพื่อให้ Polling Thread อ่านข้อมูลที่ถูกต้อง ---
         time.sleep(5) # หน่วงเวลา 2 วินาที
 
-        log_message("✅ Write Job Sequence Completed Successfully.")
+        log_message("[OK] Write Job Sequence Completed Successfully.")
         return jsonify({'status': 'success', 'message': 'Job data sent and acknowledged by PLC.'})
 
     except Exception as e:
-        log_message(f"❌ ERROR during write job sequence for {plc_name}: {e}")
+        log_message(f"[FAILED] ERROR during write job sequence for {plc_name}: {e}")
         traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -673,7 +681,7 @@ def write_job_queue_to_plc_logic(plc_name, pending_jobs):
                 client.write_registers(block_start_addr + OFFSET_ITEM + WRITE_REG_START_ADDR, item_regs)
                 client.write_registers(block_start_addr + OFFSET_QTY + WRITE_REG_START_ADDR, qty_regs)
 
-    log_message(f"✅ Write Job Queue Sequence for {plc_name} Completed Successfully.")
+    log_message(f"[OK] Write Job Queue Sequence for {plc_name} Completed Successfully.")
     return {'status': 'success', 'message': f'Successfully sent {len(pending_jobs)} pending jobs to PLC.'}
 
 @app.route('/api/plc/send-pending-queue', methods=['POST'])
@@ -699,7 +707,7 @@ def send_pending_queue():
         result = write_job_queue_to_plc_logic(plc_name, pending_jobs_dict)
         return jsonify(result)
     except Exception as e:
-        log_message(f"❌ ERROR during send pending queue for {plc_name}: {e}")
+        log_message(f"[FAILED] ERROR during send pending queue for {plc_name}: {e}")
         traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
