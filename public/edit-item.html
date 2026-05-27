@@ -154,7 +154,10 @@
                     const data = await response.json();
 
                     if (data.success && data.displayName) {
-                        document.getElementById('display-username').textContent = data.displayName;
+                        const usernameEl = document.getElementById('display-username');
+                        if (usernameEl) {
+                            usernameEl.textContent = data.displayName;
+                        }
                         if (data.role) {
                             document.body.classList.add(`role-${data.role}`);
                         }

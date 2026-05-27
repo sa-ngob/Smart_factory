@@ -184,13 +184,12 @@ router.put('/:id', upload.single('image'), async (req, res) => {
             const sql = `UPDATE items SET
                 item_code = $1, customer_id = $2, item_name = $3, model = $4, material_name = $5,
                 grade = $6, colour = $7, part_weight_gram = $8, cycle_time_sec = $9, item_type = $10, uom = $11, status = $12,
-                selling_price = $13, cost_price = $14, min_stock = $15, image_path = $16
-                WHERE id = $17`;
+                image_path = $13
+                WHERE id = $14`;
             const params = [
                 data.item_code, parseNumber(data.customer_id), data.item_name, data.model, data.material_name,
                 data.grade, data.colour, parseNumber(data.part_weight_gram), parseNumber(data.cycle_time_sec),
                 data.item_type, data.uom, data.status || 'active',
-                parseNumber(data.selling_price) || 0, parseNumber(data.cost_price) || 0, parseNumber(data.min_stock) || 0,
                 image_path, itemId
             ];
             await client.query(sql, params);
@@ -217,14 +216,12 @@ router.put('/:id', upload.single('image'), async (req, res) => {
 
             const sql = `UPDATE items SET
                 item_code = ?, customer_id = ?, item_name = ?, model = ?, material_name = ?,
-                grade = ?, colour = ?, part_weight_gram = ?, cycle_time_sec = ?, item_type = ?, uom = ?, status = ?,
-                selling_price = ?, cost_price = ?, min_stock = ?
+                grade = ?, colour = ?, part_weight_gram = ?, cycle_time_sec = ?, item_type = ?, uom = ?, status = ?, image_path = ?
                 WHERE id = ?`;
             const params = [
                 data.item_code, parseNumber(data.customer_id), data.item_name, data.model, data.material_name,
                 data.grade, data.colour, parseNumber(data.part_weight_gram), parseNumber(data.cycle_time_sec),
-                data.item_type, data.uom, data.status || 'active',
-                parseNumber(data.selling_price) || 0, parseNumber(data.cost_price) || 0, parseNumber(data.min_stock) || 0,
+                data.item_type, data.uom, data.status || 'active', image_path,
                 itemId
             ];
 
