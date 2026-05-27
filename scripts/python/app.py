@@ -92,11 +92,14 @@ def decode_registers_to_string(registers):
     return byte_string.decode('utf-8', errors='ignore').rstrip('\x00')
 
 # --- 3. Flask Web Server & Database Setup ---
-app = Flask(__name__, template_folder='template')
+# Get the project root directory
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+template_folder_path = os.path.join(project_root, 'template')
+app = Flask(__name__, template_folder=template_folder_path)
 CORS(app, supports_credentials=True)
 # Priority: Environment Variable > Default Localhost
 # --- FIX: แก้ Database URL เป็น postgres:5432 ---
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres123@postgres:5432/smart_factory')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres123@localhost:5433/smart_factory')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
