@@ -98,7 +98,7 @@ router.post('/record-production', async (req, res) => {
 
         // ใช้ NOW() เพื่อบันทึกเวลาปัจจุบันจาก Server (PostgreSQL)
         const result = await pool.query(
-            "INSERT INTO production_records (mo_id, record_date, shift, operator_name, good_quantity, waste_quantity) VALUES ($1, NOW(), 'day', $2, $3, $4) RETURNING id",
+            "INSERT INTO production_records (mo_id, record_date, operator_name, good_quantity, waste_quantity) VALUES ($1, NOW(), $2, $3, $4) RETURNING id",
             [mo[0].id, operator_name, good_quantity, scraps.reduce((s, i) => s + i.quantity, 0)]
         );
 
